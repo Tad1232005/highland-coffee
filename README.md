@@ -4,6 +4,11 @@
 
 Hệ thống web đặt đồ uống trực tuyến phong cách Highlands Coffee — FastAPI + React + PostgreSQL.
 
+📚 Tài liệu chi tiết từng phần:
+- [Backend README](backend/README.md) — API, database, migration, test, lint
+- [Frontend README](frontend/README.md) — cấu trúc, routing, design system, build
+- [Kiến trúc hệ thống](docs/architecture.md) · [ERD](docs/erd.md)
+
 ---
 
 ## ⚡ Yêu cầu tiên quyết
@@ -194,7 +199,6 @@ npm run build
 highland-coffee/
 ├── .github/
 │   ├── workflows/ci.yml          # GitHub Actions CI Pipeline
-│   ├── dependabot.yml            # Tự động cập nhật dependencies
 │   └── copilot-instructions.md  # Hướng dẫn cho GitHub Copilot
 ├── backend/
 │   ├── app/
@@ -210,6 +214,7 @@ highland-coffee/
 │   ├── tests/                    # pytest: test_auth, test_orders, test_products
 │   ├── pyproject.toml            # Cấu hình ruff + pytest
 │   ├── alembic.ini
+│   ├── README.md                 # Tài liệu backend chi tiết
 │   └── requirements.txt
 ├── frontend/
 │   ├── src/
@@ -220,6 +225,7 @@ highland-coffee/
 │   │   └── routes/               # React Router + ProtectedRoute/AdminRoute
 │   ├── eslint.config.js          # ESLint configuration
 │   ├── package.json
+│   ├── README.md                 # Tài liệu frontend chi tiết
 │   └── vite.config.js
 ├── docs/
 │   ├── architecture.md           # Mô tả kiến trúc hệ thống

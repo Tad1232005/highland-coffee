@@ -96,6 +96,7 @@ HighlandCF/
 │   ├── alembic/               # Alembic version files & env.py
 │   ├── tests/                 # pytest test cases
 │   ├── alembic.ini
+│   ├── README.md              # Backend setup, API reference, DB & testing
 │   └── requirements.txt
 ├── frontend/
 │   ├── src/
@@ -109,6 +110,7 @@ HighlandCF/
 │   │   └── index.css          # Design system & theme styles
 │   ├── index.html
 │   ├── package.json
+│   ├── README.md              # Frontend setup, structure, routing & build
 │   └── vite.config.js
 ├── docs/                      # Project design & specs
 ├── .env.example
