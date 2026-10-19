@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import List
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -17,7 +18,9 @@ class Settings(BaseSettings):
     # Async Database URL (e.g. postgresql+asyncpg://user:pass@localhost:5555/highland_coffee)
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5555/highland_coffee"
     # Sync Database URL for Alembic & Seed (e.g. postgresql://user:pass@localhost:5555/highland_coffee)
-    SYNC_DATABASE_URL: str = "postgresql+psycopg2://postgres:postgres@localhost:5555/highland_coffee"
+    SYNC_DATABASE_URL: str = (
+        "postgresql+psycopg2://postgres:postgres@localhost:5555/highland_coffee"
+    )
 
     # Security & JWT
     SECRET_KEY: str = "highland-coffee-super-secret-key-change-in-production-min-32-chars"
@@ -39,10 +42,10 @@ class Settings(BaseSettings):
     INITIAL_ADMIN_PHONE: str = "0901234567"
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=Path(__file__).resolve().parents[2] / ".env",
         env_file_encoding="utf-8",
         case_sensitive=True,
-        extra="ignore"
+        extra="ignore",
     )
 
 

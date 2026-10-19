@@ -31,7 +31,9 @@ class Order(Base):
     phone: Mapped[str] = mapped_column(String(50), nullable=False)
     address: Mapped[str] = mapped_column(Text, nullable=False)
     note: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
 
     # Relationships
     user: Mapped["User"] = relationship("User", back_populates="orders")
@@ -48,7 +50,9 @@ class Order(Base):
     )
 
     def __repr__(self) -> str:
-        return f"<Order #{self.id} user={self.user_id} total={self.total_amount} status={self.status}>"
+        return (
+            f"<Order #{self.id} user={self.user_id} total={self.total_amount} status={self.status}>"
+        )
 
 
 class OrderItem(Base):

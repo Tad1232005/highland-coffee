@@ -21,7 +21,6 @@ class Category(Base):
     products: Mapped[List["Product"]] = relationship(
         "Product",
         back_populates="category",
-        cascade="all, delete-orphan",
     )
 
     def __repr__(self) -> str:

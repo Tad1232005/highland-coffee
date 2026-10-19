@@ -58,10 +58,20 @@ jobs:
           cd backend
           ruff check .
 
+      - name: Run Ruff Format Check
+        run: |
+          cd backend
+          ruff format --check .
+
       - name: Run Alembic Migrations
         run: |
           cd backend
           alembic upgrade head
+
+      - name: Seed Test Database
+        run: |
+          cd backend
+          python -m app.seed
 
       - name: Run Pytest Test Suite
         run: |
@@ -95,3 +105,6 @@ jobs:
 
       - name: Build production bundle
         run: npm run build
+
+      - name: Run Frontend Tests
+        run: npm run test

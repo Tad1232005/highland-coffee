@@ -21,9 +21,7 @@ async def _get_user_cart_response(user_id: int, db: AsyncSession) -> CartRespons
     """Helper to fetch and format the full cart for a user."""
     result = await db.execute(
         select(CartItem)
-        .options(
-            selectinload(CartItem.product).selectinload(Product.category)
-        )
+        .options(selectinload(CartItem.product).selectinload(Product.category))
         .where(CartItem.user_id == user_id)
         .order_by(CartItem.id.asc())
     )
@@ -56,9 +54,7 @@ async def add_item_to_cart(
 ):
     """Add a product to the cart. If already present, increment the quantity."""
     # Check product existence & availability
-    prod_result = await db.execute(
-        select(Product).where(Product.id == item_in.product_id)
-    )
+    prod_result = await db.execute(select(Product).where(Product.id == item_in.product_id))
     product = prod_result.scalar_one_or_none()
     if not product:
         raise HTTPException(
