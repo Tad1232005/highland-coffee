@@ -146,7 +146,7 @@ Backend dùng JWT nên mọi request cần đăng nhập (giỏ hàng, đơn hà
 npm run lint
 ```
 
-Dùng ESLint flat config (`eslint.config.js`) với `@eslint/js`, `react-hooks`, `react-refresh`. Ngoài ra repo có cấu hình Oxlint (`.oxlintrc.json`) cho các rule React.
+Dùng ESLint flat config (`eslint.config.js`) với `@eslint/js`, `react-hooks`, `react-refresh`.
 
 ---
 
