@@ -40,10 +40,10 @@ cd highland-coffee
 
 ```bash
 # Windows (PowerShell)
-Copy-Item .env.example .env
+Copy-Item backend/.env.example backend/.env
 
 # macOS / Linux
-cp .env.example .env
+cp backend/.env.example backend/.env
 ```
 
 > **Lưu ý:** File `.env` đã có đủ giá trị mặc định để chạy local. Không cần chỉnh sửa gì thêm.
