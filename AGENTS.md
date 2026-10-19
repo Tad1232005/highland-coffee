@@ -57,14 +57,16 @@ There are **three** env files with different consumers:
 
 `backend/app/core/config.py` resolves `backend/.env` by absolute path from `__file__`, so it works regardless of the current working directory. Root `.env` is **not** read by the backend.
 
+`.env.example` files are committed templates with safe defaults. `.env` files are local, gitignored copies that each developer may customize (ports, passwords, secrets) without touching the repo. The contents are identical right after copying; the separation exists so secrets never enter Git.
+
 ```bash
-# Root (docker compose)
+# Root (docker compose) — OPTIONAL: compose falls back to the same defaults
 cp .env.example .env
 
-# Backend
+# Backend — REQUIRED
 cp backend/.env.example backend/.env
 
-# Frontend
+# Frontend — OPTIONAL (defaults to http://localhost:8000/api)
 cp frontend/.env.example frontend/.env
 ```
 
@@ -288,15 +290,15 @@ Triggers: push/PR to `main`, `master`, `dev`.
 | QA | No type checker (mypy/pyright), no coverage threshold, no `pip-audit`/`npm audit` in CI. |
 | Tooling | No `.nvmrc` or `engines`; local Node 24 vs CI Node 20. |
 | Files | Empty `backend/app/crud/` and empty `backend/alembic/README`; leftover Vite template assets (`react.svg`, `vite.svg`, `hero.png`, `icons.svg`). |
-| Config | Root `.env.example` mixes backend vars and `VITE_API_BASE_URL`; backend vars are duplicated in `backend/.env.example`. |
 | CI | Vitest temp artifacts (`vite.config.js.timestamp-*.mjs`) are not ignored. |
 
 ---
 
 ## 11. Git Workflow
 
-- Branches: `main` (stable), `dev` (integration), `feature/<name>`.
+- Branches: `main` (stable), `dev` (integration), `feature/<name>`, `fix/<name>`, `docs/<name>`.
 - Conventional Commits: `feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`, `ci:`.
+- Full team PR workflow (branch protection, review, rebase, squash merge, PR checklist) is documented in `README.md`.
 - Repo uses `* text=auto eol=lf`; if `git status` shows mass modification after a checkout, run:
   ```bash
   git add --renormalize .
