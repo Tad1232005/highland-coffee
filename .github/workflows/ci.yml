@@ -58,6 +58,11 @@ jobs:
           cd backend
           ruff check .
 
+      - name: Run Ruff Format Check
+        run: |
+          cd backend
+          ruff format --check .
+
       - name: Run Alembic Migrations
         run: |
           cd backend
@@ -100,3 +105,6 @@ jobs:
 
       - name: Build production bundle
         run: npm run build
+
+      - name: Run Frontend Tests
+        run: npm run test
