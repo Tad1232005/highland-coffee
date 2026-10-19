@@ -63,6 +63,11 @@ jobs:
           cd backend
           alembic upgrade head
 
+      - name: Seed Test Database
+        run: |
+          cd backend
+          python -m app.seed
+
       - name: Run Pytest Test Suite
         run: |
           cd backend
