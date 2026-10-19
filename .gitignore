@@ -53,6 +53,7 @@ yarn-error.log*
 frontend/dist/
 frontend/dist-ssr/
 *.local
+*.timestamp-*.mjs
 
 # Database / Volumes
 postgres_data/
