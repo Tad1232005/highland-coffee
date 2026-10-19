@@ -9,6 +9,7 @@
 .env.local
 *.env
 !.env.example
+!frontend/.env.example
 .claude/settings.local.json
 
 # Python

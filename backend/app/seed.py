@@ -7,6 +7,7 @@ if hasattr(sys.stderr, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 from sqlalchemy import select
+
 from app.core.config import settings
 from app.core.security import get_password_hash
 from app.db.session import SyncSessionLocal

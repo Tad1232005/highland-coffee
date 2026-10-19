@@ -1,7 +1,9 @@
 from datetime import datetime
 from typing import TYPE_CHECKING, List
-from sqlalchemy import String, Boolean, DateTime, func
+
+from sqlalchemy import Boolean, DateTime, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.db.base import Base
 
 if TYPE_CHECKING:

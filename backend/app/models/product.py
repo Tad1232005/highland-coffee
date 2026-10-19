@@ -1,12 +1,14 @@
 from datetime import datetime
 from typing import TYPE_CHECKING, List, Optional
-from sqlalchemy import String, Integer, Boolean, Text, DateTime, ForeignKey, Index, func
+
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.db.base import Base
 
 if TYPE_CHECKING:
-    from app.models.category import Category
     from app.models.cart import CartItem
+    from app.models.category import Category
     from app.models.order import OrderItem
 
 

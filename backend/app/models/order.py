@@ -1,12 +1,14 @@
 from datetime import datetime
 from typing import TYPE_CHECKING, List, Optional
-from sqlalchemy import String, Integer, Text, DateTime, ForeignKey, Index, func
+
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.db.base import Base
 
 if TYPE_CHECKING:
-    from app.models.user import User
     from app.models.product import Product
+    from app.models.user import User
 
 
 class Order(Base):
