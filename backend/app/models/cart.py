@@ -30,9 +30,7 @@ class CartItem(Base):
     user: Mapped["User"] = relationship("User", back_populates="cart_items")
     product: Mapped["Product"] = relationship("Product", back_populates="cart_items")
 
-    __table_args__ = (
-        UniqueConstraint("user_id", "product_id", name="uq_cart_items_user_product"),
-    )
+    __table_args__ = (UniqueConstraint("user_id", "product_id", name="uq_cart_items_user_product"),)
 
     def __repr__(self) -> str:
         return f"<CartItem user={self.user_id} product={self.product_id} qty={self.quantity}>"

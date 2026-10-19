@@ -145,7 +145,6 @@ def seed_database():
                 "image_url": "https://images.unsplash.com/photo-1485808191679-5f86510681a2?w=600&auto=format&fit=crop&q=80",
                 "description": "Cà phê Espresso chuẩn Ý hòa quyện cùng sữa tươi bọt mịn và sốt caramel thơm lừng ngọt ngào.",
             },
-
             # Trà
             {
                 "category_slug": "tra",
@@ -187,7 +186,6 @@ def seed_database():
                 "image_url": "https://images.unsplash.com/photo-1536256263959-770b48d82b0a?w=600&auto=format&fit=crop&q=80",
                 "description": "Trà xanh thượng hạng thơm thoang thoảng kết hợp cùng đậu đỏ Nhật Bản bùi béo ngọt dịu.",
             },
-
             # Freeze
             {
                 "category_slug": "freeze",
@@ -221,7 +219,6 @@ def seed_database():
                 "image_url": "https://images.unsplash.com/photo-1579954115545-a95591f28bfc?w=600&auto=format&fit=crop&q=80",
                 "description": "Bánh oreo sô-cô-la xay nhuyễn cùng sữa tươi và kem, ngọt ngào giòn tan trong từng ngụm.",
             },
-
             # Bánh & Snack
             {
                 "category_slug": "banh-ngot",

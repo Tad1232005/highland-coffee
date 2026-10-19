@@ -82,9 +82,7 @@ async def update_category(
     if category_in.slug is not None:
         # Check uniqueness if changed
         existing_slug = await db.execute(
-            select(Category).where(
-                Category.slug == category_in.slug, Category.id != category_id
-            )
+            select(Category).where(Category.slug == category_in.slug, Category.id != category_id)
         )
         if existing_slug.scalar_one_or_none():
             raise HTTPException(

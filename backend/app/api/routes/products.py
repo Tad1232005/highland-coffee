@@ -21,7 +21,9 @@ router = APIRouter(prefix="/products", tags=["Products"])
 
 @router.get("", response_model=ProductListResponse)
 async def list_products(
-    q: Optional[str] = Query(default=None, description="Search keyword in product name or description"),
+    q: Optional[str] = Query(
+        default=None, description="Search keyword in product name or description"
+    ),
     category_id: Optional[int] = Query(default=None, description="Filter by category ID"),
     min_price: Optional[int] = Query(default=None, ge=0, description="Minimum price in VND"),
     max_price: Optional[int] = Query(default=None, ge=0, description="Maximum price in VND"),
@@ -81,9 +83,7 @@ async def list_products(
 async def get_product(product_id: int, db: AsyncSession = Depends(get_db)):
     """Retrieve single product details by ID."""
     result = await db.execute(
-        select(Product)
-        .options(selectinload(Product.category))
-        .where(Product.id == product_id)
+        select(Product).options(selectinload(Product.category)).where(Product.id == product_id)
     )
     product = result.scalar_one_or_none()
     if not product:
@@ -102,9 +102,7 @@ async def create_product(
 ):
     """Create a new product (Admin only)."""
     # Verify category exists
-    cat_result = await db.execute(
-        select(Category).where(Category.id == product_in.category_id)
-    )
+    cat_result = await db.execute(select(Category).where(Category.id == product_in.category_id))
     if not cat_result.scalar_one_or_none():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -112,9 +110,7 @@ async def create_product(
         )
 
     # Verify slug uniqueness
-    existing_slug = await db.execute(
-        select(Product).where(Product.slug == product_in.slug)
-    )
+    existing_slug = await db.execute(select(Product).where(Product.slug == product_in.slug))
     if existing_slug.scalar_one_or_none():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -136,9 +132,7 @@ async def create_product(
 
     # Re-fetch with category loaded
     res = await db.execute(
-        select(Product)
-        .options(selectinload(Product.category))
-        .where(Product.id == product.id)
+        select(Product).options(selectinload(Product.category)).where(Product.id == product.id)
     )
     return res.scalar_one()
 
@@ -152,9 +146,7 @@ async def update_product(
 ):
     """Update an existing product (Admin only)."""
     result = await db.execute(
-        select(Product)
-        .options(selectinload(Product.category))
-        .where(Product.id == product_id)
+        select(Product).options(selectinload(Product.category)).where(Product.id == product_id)
     )
     product = result.scalar_one_or_none()
     if not product:
@@ -164,9 +156,7 @@ async def update_product(
         )
 
     if product_in.category_id is not None:
-        cat_result = await db.execute(
-            select(Category).where(Category.id == product_in.category_id)
-        )
+        cat_result = await db.execute(select(Category).where(Category.id == product_in.category_id))
         if not cat_result.scalar_one_or_none():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -176,9 +166,7 @@ async def update_product(
 
     if product_in.slug is not None:
         existing_slug = await db.execute(
-            select(Product).where(
-                Product.slug == product_in.slug, Product.id != product_id
-            )
+            select(Product).where(Product.slug == product_in.slug, Product.id != product_id)
         )
         if existing_slug.scalar_one_or_none():
             raise HTTPException(
@@ -203,9 +191,7 @@ async def update_product(
     await db.refresh(product)
 
     res = await db.execute(
-        select(Product)
-        .options(selectinload(Product.category))
-        .where(Product.id == product.id)
+        select(Product).options(selectinload(Product.category)).where(Product.id == product.id)
     )
     return res.scalar_one()
 

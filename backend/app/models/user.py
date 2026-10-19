@@ -19,9 +19,13 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     full_name: Mapped[str] = mapped_column(String(255), nullable=False)
     phone: Mapped[str] = mapped_column(String(50), nullable=True)
-    role: Mapped[str] = mapped_column(String(20), default="customer", nullable=False)  # 'customer' | 'admin'
+    role: Mapped[str] = mapped_column(
+        String(20), default="customer", nullable=False
+    )  # 'customer' | 'admin'
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
 
     # Relationships
     cart_items: Mapped[List["CartItem"]] = relationship(

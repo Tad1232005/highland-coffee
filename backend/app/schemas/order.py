@@ -41,9 +41,7 @@ class OrderResponse(BaseModel):
 
 
 class OrderStatusUpdate(BaseModel):
-    status: str = Field(
-        description="One of: pending, confirmed, preparing, completed, cancelled"
-    )
+    status: str = Field(description="One of: pending, confirmed, preparing, completed, cancelled")
 
 
 class OrderListResponse(BaseModel):
