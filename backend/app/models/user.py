@@ -1,7 +1,7 @@
 from datetime import datetime
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, List, Optional
 
-from sqlalchemy import Boolean, DateTime, String, func
+from sqlalchemy import Boolean, CheckConstraint, DateTime, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -18,7 +18,7 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     full_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    phone: Mapped[str] = mapped_column(String(50), nullable=True)
+    phone: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     role: Mapped[str] = mapped_column(
         String(20), default="customer", nullable=False
     )  # 'customer' | 'admin'
@@ -34,12 +34,15 @@ class User(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+    # Orders are intentionally NOT cascaded: deleting a user must not erase
+    # order history. The FK is ON DELETE SET NULL, the DB handles the nulling.
     orders: Mapped[List["Order"]] = relationship(
         "Order",
         back_populates="user",
-        cascade="all, delete-orphan",
         passive_deletes=True,
     )
+
+    __table_args__ = (CheckConstraint("role IN ('customer', 'admin')", name="ck_users_role"),)
 
     def __repr__(self) -> str:
         return f"<User {self.email} ({self.role})>"
