@@ -22,7 +22,7 @@ def client():
 
 @pytest.fixture(autouse=True)
 def clean_db():
-    """Xóa dữ liệu test tự tạo sau mỗi case để các test không dính nhau, giữ nguyên seed data."""
+    """Xoa du lieu test tao sau moi case de cac test khong anh huong nhau, giu nguyen seed data."""
     yield
     session = SyncSessionLocal()
     try:
@@ -30,6 +30,7 @@ def clean_db():
         session.execute(text("DELETE FROM orders"))
         session.execute(text("DELETE FROM cart_items"))
         session.execute(text("DELETE FROM products WHERE slug LIKE 'test-%'"))
+        session.execute(text("DELETE FROM categories WHERE slug LIKE 'test-%'"))
         session.execute(text("DELETE FROM users WHERE email LIKE 'user_%@example.com'"))
         session.commit()
     finally:

@@ -62,9 +62,12 @@ async def get_current_user(
     user = result.scalar_one_or_none()
 
     if not user:
+        # The token itself was valid but the account behind it is gone.
+        # This is an authentication failure, not a missing resource -> 401.
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found",
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="The account linked to this token no longer exists",
+            headers={"WWW-Authenticate": "Bearer"},
         )
 
     if not user.is_active:

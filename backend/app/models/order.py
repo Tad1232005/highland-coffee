@@ -1,7 +1,16 @@
 from datetime import datetime
 from typing import TYPE_CHECKING, List, Optional
 
-from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, Text, func
+from sqlalchemy import (
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -10,14 +19,18 @@ if TYPE_CHECKING:
     from app.models.product import Product
     from app.models.user import User
 
+ORDER_STATUSES = ("pending", "confirmed", "preparing", "completed", "cancelled")
+
 
 class Order(Base):
     __tablename__ = "orders"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    user_id: Mapped[int] = mapped_column(
-        ForeignKey("users.id", ondelete="CASCADE"),
-        nullable=False,
+    # Nullable + ON DELETE SET NULL so that deleting a user never destroys
+    # order history (the order keeps its own receiver_name / phone snapshot).
+    user_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
         index=True,
     )
     status: Mapped[str] = mapped_column(
@@ -36,7 +49,7 @@ class Order(Base):
     )
 
     # Relationships
-    user: Mapped["User"] = relationship("User", back_populates="orders")
+    user: Mapped[Optional["User"]] = relationship("User", back_populates="orders")
     items: Mapped[List["OrderItem"]] = relationship(
         "OrderItem",
         back_populates="order",
@@ -45,6 +58,10 @@ class Order(Base):
     )
 
     __table_args__ = (
+        CheckConstraint(
+            "status IN ('pending', 'confirmed', 'preparing', 'completed', 'cancelled')",
+            name="ck_orders_status",
+        ),
         Index("ix_orders_user_id", "user_id"),
         Index("ix_orders_status", "status"),
     )

@@ -1,7 +1,8 @@
-from typing import List, Optional
+import math
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -150,20 +151,35 @@ async def create_order_from_cart(
     return _format_order_response(saved_order)
 
 
-@router.get("/orders", response_model=List[OrderResponse])
+@router.get("/orders", response_model=OrderListResponse)
 async def get_my_orders(
+    page: int = Query(default=1, ge=1, description="Page number"),
+    size: int = Query(default=10, ge=1, le=100, description="Items per page"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Retrieve orders placed by the current user."""
+    """Retrieve orders placed by the current user (paginated, newest first)."""
+    count_query = select(func.count()).select_from(Order).where(Order.user_id == current_user.id)
+    total = (await db.execute(count_query)).scalar_one()
+
+    offset = (page - 1) * size
     result = await db.execute(
         select(Order)
         .options(selectinload(Order.items), selectinload(Order.user))
-        .where(Order.id == Order.id, Order.user_id == current_user.id)
-        .order_by(Order.created_at.desc())
+        .where(Order.user_id == current_user.id)
+        .order_by(Order.created_at.desc(), Order.id.desc())
+        .offset(offset)
+        .limit(size)
     )
     orders = result.scalars().all()
-    return [_format_order_response(o) for o in orders]
+
+    return OrderListResponse(
+        items=[_format_order_response(o) for o in orders],
+        total=total,
+        page=page,
+        size=size,
+        total_pages=math.ceil(total / size) if size else 0,
+    )
 
 
 @router.get("/orders/{order_id}", response_model=OrderResponse)
@@ -198,22 +214,42 @@ async def get_order_by_id(
 @router.get("/admin/orders", response_model=OrderListResponse)
 async def admin_list_orders(
     status_filter: Optional[str] = Query(default=None, alias="status"),
+    page: int = Query(default=1, ge=1, description="Page number"),
+    size: int = Query(default=20, ge=1, le=100, description="Items per page"),
     db: AsyncSession = Depends(get_db),
     _admin: User = Depends(require_admin),
 ):
     """List all store orders (Admin only) with optional status filtering."""
-    query = select(Order).options(selectinload(Order.items), selectinload(Order.user))
-
+    filters = []
     if status_filter:
-        query = query.where(Order.status == status_filter)
+        if status_filter not in VALID_ORDER_STATUSES:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    f"Invalid status '{status_filter}'. "
+                    f"Must be one of: {', '.join(VALID_ORDER_STATUSES)}"
+                ),
+            )
+        filters.append(Order.status == status_filter)
 
-    query = query.order_by(Order.created_at.desc())
+    count_query = select(func.count()).select_from(Order).where(*filters)
+    total = (await db.execute(count_query)).scalar_one()
+
+    offset = (page - 1) * size
+    query = select(Order).options(selectinload(Order.items), selectinload(Order.user))
+    if filters:
+        query = query.where(*filters)
+    query = query.order_by(Order.created_at.desc(), Order.id.desc()).offset(offset).limit(size)
+
     result = await db.execute(query)
     orders = result.scalars().all()
 
     return OrderListResponse(
         items=[_format_order_response(o) for o in orders],
-        total=len(orders),
+        total=total,
+        page=page,
+        size=size,
+        total_pages=math.ceil(total / size) if size else 0,
     )
 
 

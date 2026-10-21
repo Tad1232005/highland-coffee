@@ -26,7 +26,8 @@ class OrderItemResponse(BaseModel):
 
 class OrderResponse(BaseModel):
     id: int
-    user_id: int
+    # Nullable: the account is deleted, the order history is preserved.
+    user_id: Optional[int] = None
     status: str  # pending, confirmed, preparing, completed, cancelled
     total_amount: int
     receiver_name: str
@@ -47,3 +48,6 @@ class OrderStatusUpdate(BaseModel):
 class OrderListResponse(BaseModel):
     items: List[OrderResponse]
     total: int
+    page: int
+    size: int
+    total_pages: int

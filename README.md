@@ -172,13 +172,15 @@ Nếu muốn xem dữ liệu trực quan qua pgAdmin:
 ```bash
 cd backend
 
-# Chạy toàn bộ 9 test cases
+# Chạy toàn bộ 22 test cases
 pytest -v
 
 # Chạy riêng từng module
 pytest tests/test_auth.py -v
 pytest tests/test_orders.py -v
 pytest tests/test_products.py -v
+pytest tests/test_categories.py -v
+pytest tests/test_constraints.py -v
 ```
 
 ---
@@ -233,14 +235,14 @@ highland-coffee/
 │   ├── app/
 │   │   ├── api/routes/           # Auth, Categories, Products, Cart, Orders, Admin
 │   │   ├── api/deps.py           # Dependencies: get_db, get_current_user, require_admin
-│   │   ├── core/                 # config.py, security.py (JWT + bcrypt)
+│   │   ├── core/                 # config.py, security.py (JWT + bcrypt), rate_limit.py (login throttle)
 │   │   ├── db/                   # base.py, session.py (async + sync engine)
 │   │   ├── models/               # User, Category, Product, CartItem, Order, OrderItem
 │   │   ├── schemas/              # Pydantic v2 schemas
 │   │   ├── main.py               # FastAPI app + CORS
 │   │   └── seed.py               # Script seed dữ liệu mẫu
 │   ├── alembic/                  # Database migrations
-│   ├── tests/                    # pytest: test_auth, test_orders, test_products
+│   ├── tests/                    # pytest: test_auth, test_orders, test_products, test_categories, test_constraints
 │   ├── .env.example              # Template env backend
 │   ├── Dockerfile
 │   ├── pyproject.toml            # Cấu hình ruff + pytest

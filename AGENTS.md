@@ -101,6 +101,14 @@ ruff format --check .
 ruff format .
 ```
 
+> **Venv path is machine-specific.** The console-script launchers (`uvicorn.exe`, `alembic.exe`,
+> `pytest.exe`, `ruff.exe`, `pip.exe`) embed an absolute path to the venv's `python.exe`.
+> If the repo is moved/copied to another directory, every launcher dies with
+> `Fatal error in launcher: Unable to create process using "...\.venv\Scripts\python.exe"`.
+> Fix: `python -m pip install --force-reinstall --no-deps -r requirements.txt` then
+> `python -m ensurepip --upgrade` (if `pip.exe` is still stale, copy `pip3.exe` over it).
+> Workaround without reinstalling: `python -m uvicorn app.main:app --reload --port 8000`.
+
 ### Frontend (`cd frontend`)
 ```bash
 npm ci
@@ -135,8 +143,9 @@ HighlandCF/
 │   │   │   ├── deps.py              # get_db, get_current_user, require_admin
 │   │   │   └── api.py               # router aggregation, prefix /api
 │   │   ├── core/
-│   │   │   ├── config.py            # Settings (reads backend/.env)
-│   │   │   └── security.py          # bcrypt + JWT
+│   │   │   ├── config.py            # Settings (reads backend/.env), fail-fast SECRET_KEY
+│   │   │   ├── security.py          # bcrypt + JWT + dummy hash
+│   │   │   └── rate_limit.py        # SlidingWindowRateLimiter (login throttle)
 │   │   ├── crud/                    # PLACEHOLDER (empty package)
 │   │   ├── db/
 │   │   │   ├── base.py
@@ -146,7 +155,7 @@ HighlandCF/
 │   │   ├── main.py                  # app + CORS + /api/health
 │   │   └── seed.py                  # admin, customer, 4 categories, 18 products
 │   ├── alembic/                     # migrations
-│   ├── tests/                       # conftest + 3 test modules
+│   ├── tests/                       # conftest + 5 test modules (22 tests)
 │   ├── Dockerfile
 │   ├── README.md
 │   ├── pyproject.toml               # ruff + pytest config
@@ -191,7 +200,7 @@ HighlandCF/
 | Categories | `GET /categories`, `GET /categories/{id}`, `POST/PUT/DELETE` (admin) |
 | Products | `GET /products` (q, category_id, min/max price, page/size), `GET /products/{id}`, `POST/PUT/DELETE` (admin; DELETE = soft delete) |
 | Cart | `GET/POST /cart/items`, `PATCH/DELETE /cart/items/{id}`, `DELETE /cart/items` (auth) |
-| Orders | `POST/GET /orders`, `GET /orders/{id}`, `GET /admin/orders`, `PATCH /admin/orders/{id}/status` |
+| Orders | `POST/GET /orders`, `GET /orders/{id}`, `GET /admin/orders`, `PATCH /admin/orders/{id}/status` (both list endpoints are paginated: `page`/`size`) |
 | Health | `GET /api/health` |
 
 ### Database
@@ -200,6 +209,8 @@ HighlandCF/
 - `cart_items`: cascade delete from user and product; unique `(user_id, product_id)`.
 - `order_items`: cascade delete from order; `RESTRICT` on product (protects order history); `product_name`/`unit_price` are snapshots.
 - `products.category_id`: `RESTRICT` — a category with products cannot be deleted.
+- `orders.user_id`: **nullable**, `ON DELETE SET NULL` — deleting a user keeps their order history.
+- DB-level CHECK constraints: `ck_users_role`, `ck_orders_status`, `ck_products_price`, `ck_cart_items_quantity`.
 - Order status machine:
   `pending -> confirmed -> preparing -> completed`
   `pending/confirmed/preparing -> cancelled`
@@ -213,6 +224,8 @@ HighlandCF/
 - **SQLAlchemy 2.0+ style**: `Mapped[T]`, `mapped_column`, `await db.execute(select(...))`. Never `db.query()`.
 - **Pydantic v2**: `model_config = ConfigDict(from_attributes=True)`, use `pattern=`, never `regex=`.
 - Never return `password_hash`; hash with bcrypt via `app/core/security.py`.
+- Password policy: >= 8 chars and must contain a letter and a digit; emails are lowercased.
+- Auth errors: **401** for a missing/invalid token or a token whose user no longer exists; **403** for an authenticated non-admin.
 - Use `HTTPException(status_code=..., detail=...)` with explicit codes.
 - Datetimes are timezone-aware (`DateTime(timezone=True)`).
 - Run `ruff format` after `alembic revision --autogenerate` (CI checks formatting).
@@ -227,14 +240,15 @@ HighlandCF/
 
 ## 8. Testing
 
-- 9 backend integration tests against a real PostgreSQL (no SQLite/in-memory).
+- 22 backend integration tests against a real PostgreSQL (no SQLite/in-memory), across
+  `test_auth.py`, `test_products.py`, `test_categories.py`, `test_orders.py`, `test_constraints.py`.
 - Tests require migrations + seed first:
   ```bash
   alembic upgrade head
   python -m app.seed
   pytest -q
   ```
-- `tests/conftest.py`: session-scoped `TestClient`; `clean_db` autouse fixture removes test-created rows after each test (`order_items`, `orders`, `cart_items`, `slug LIKE 'test-%'`, `email LIKE 'user_%@example.com'`) while preserving seed data.
+- `tests/conftest.py`: session-scoped `TestClient`; `clean_db` autouse fixture removes test-created rows after each test (`order_items`, `orders`, `cart_items`, `categories.slug LIKE 'test-%'`, `slug LIKE 'test-%'`, `email LIKE 'user_%@example.com'`) while preserving seed data.
 - CI seeds the DB before running tests.
 - Frontend: one Vitest smoke test (`src/App.test.jsx`).
 
@@ -255,31 +269,31 @@ Triggers: push/PR to `main`, `master`, `dev`.
 ## 10. Known Issues & Backlog (audit results)
 
 ### High
-| Area | Issue | Suggested fix |
-|---|---|---|
-| Docker | No `.dockerignore`. `COPY . .` copies `backend/.env` (secrets), `.venv`, `node_modules`, `.git` into images. | Add `backend/.dockerignore` and `frontend/.dockerignore`. |
-| Security | `SECRET_KEY` has a hard-coded default fallback in `config.py`; a missing `.env` silently signs JWTs with a public key. | Fail fast when unset outside dev. |
-| API | `DELETE /categories/{id}` with existing products raises an unhandled `IntegrityError` → **500**. | Catch `IntegrityError`, return 400. |
-| Deps | Only direct Python deps are pinned; transitive deps still float. | Generate a full lock (`pip freeze` / `uv lock`). |
-| Auth | `get_current_user` returns **404** when the token's user no longer exists. | Return 401. |
-| Frontend | Business UI is not implemented: `api/components/context/pages/routes` are placeholders; `App.jsx`/`index.css` are Vite template. | Implement pages or document explicitly (README does). |
+| Area | Issue | Suggested fix | Status |
+|---|---|---|---|
+| Docker | No `.dockerignore`. `COPY . .` copies `backend/.env` (secrets), `.venv`, `node_modules`, `.git` into images. | Add `backend/.dockerignore` and `frontend/.dockerignore`. | Open |
+| Security | `SECRET_KEY` has a hard-coded default fallback in `config.py`; a missing `.env` silently signs JWTs with a public key. | Fail fast when unset outside dev. | Fixed - `config.py` rejects empty/placeholder/<32-char keys at startup |
+| API | `DELETE /categories/{id}` with existing products raises an unhandled `IntegrityError` → **500**. | Catch `IntegrityError`, return 400. | Fixed - `routes/categories.py` returns 400 |
+| Deps | Only direct Python deps are pinned; transitive deps still float. | Generate a full lock (`pip freeze` / `uv lock`). | Open |
+| Auth | `get_current_user` returns **404** when the token's user no longer exists. | Return 401. | Fixed - `deps.py` returns 401 + `WWW-Authenticate` |
+| Frontend | Business UI is not implemented: `api/components/context/pages/routes` are placeholders; `App.jsx`/`index.css` are Vite template. | Implement pages or document explicitly (README does). | Open - documented in `docs/architecture.md` |
 
 ### Medium
-| Area | Issue | Suggested fix |
-|---|---|---|
-| Domain | No stock/inventory; cart quantity is unbounded. | Add stock field + checks. |
-| DB | `role` and `order.status` are plain `String` without CHECK/Enum. | Add `CheckConstraint` or PG Enum. |
-| DB | Deleting a user cascades and deletes their order history. | Keep orders (nullable user / soft delete). |
-| Typing | `phone: Mapped[str]` with `nullable=True` in `User`. | `Mapped[Optional[str]]`. |
-| API | `/orders` and `/admin/orders` return all rows (no pagination). | Add page/size. |
-| DB | `NullPool` opens a new connection per request. | Use a pool in production. |
-| Auth | No login rate-limiting/lockout; password minimum is 6 chars. | Add throttling + stronger policy. |
-| Auth | JWT stored in `localStorage` (XSS exposure); no refresh/revocation. | Consider httpOnly cookies + refresh tokens. |
-| Docker | Images run as root; frontend uses `vite preview`; compose does not wire backend/frontend. | Non-root user, production server, compose services. |
-| Code | Redundant `Order.id == Order.id` in `get_my_orders` (`orders.py`). | Remove. |
-| Tests | `pytest-asyncio` is installed and `asyncio_mode=auto`, but all tests are sync. | Remove plugin or add async tests. |
-| Docs | README says SQLAlchemy 2.0 / React Router v6; actual 2.1.5 / v7. | This file is authoritative. |
-| CI | Alembic autogenerate output is unformatted; `ruff format --check` will fail on new migrations. | Run `ruff format` after generating. |
+| Area | Issue | Suggested fix | Status |
+|---|---|---|---|
+| Domain | No stock/inventory; cart quantity is unbounded. | Add stock field + checks. | Open (deferred by design) |
+| DB | `role` and `order.status` are plain `String` without CHECK/Enum. | Add `CheckConstraint` or PG Enum. | Fixed - `ck_users_role`, `ck_orders_status` (migration `8f3a1c92d4b7`) |
+| DB | Deleting a user cascades and deletes their order history. | Keep orders (nullable user / soft delete). | Fixed - `orders.user_id` nullable + `ON DELETE SET NULL` |
+| Typing | `phone: Mapped[str]` with `nullable=True` in `User`. | `Mapped[Optional[str]]`. | Fixed |
+| API | `/orders` and `/admin/orders` return all rows (no pagination). | Add page/size. | Fixed - `OrderListResponse` envelope |
+| DB | `NullPool` opens a new connection per request. | Use a pool in production. | Open |
+| Auth | No login rate-limiting/lockout; password minimum is 6 chars. | Add throttling + stronger policy. | Fixed - `core/rate_limit.py` (429) + password >= 8 chars with letter & digit |
+| Auth | JWT stored in `localStorage` (XSS exposure); no refresh/revocation. | Consider httpOnly cookies + refresh tokens. | Open (deferred by design) |
+| Docker | Images run as root; frontend uses `vite preview`; compose does not wire backend/frontend. | Non-root user, production server, compose services. | Open |
+| Code | Redundant `Order.id == Order.id` in `get_my_orders` (`orders.py`). | Remove. | Fixed |
+| Tests | `pytest-asyncio` is installed and `asyncio_mode=auto`, but all tests are sync. | Remove plugin or add async tests. | Open |
+| Docs | README says SQLAlchemy 2.0 / React Router v6; actual 2.1.5 / v7. | This file is authoritative. | Fixed - `backend/README.md`, `docs/architecture.md` updated |
+| CI | Alembic autogenerate output is unformatted; `ruff format --check` will fail on new migrations. | Run `ruff format` after generating. | Fixed - new migration is formatted |
 
 ### Low
 | Area | Issue |

@@ -154,3 +154,33 @@ def test_order_status_transitions_and_rules(client):
         headers=admin_headers,
     )
     assert terminal_test.status_code == 400
+
+
+def test_my_orders_are_paginated(client):
+    """GET /orders returns a paginated envelope instead of a bare array."""
+    user_headers = {"Authorization": f"Bearer {get_user_token(client)}"}
+
+    res = client.get("/api/orders?page=1&size=5", headers=user_headers)
+    assert res.status_code == 200
+    data = res.json()
+    assert {"items", "total", "page", "size", "total_pages"}.issubset(data.keys())
+    assert data["page"] == 1
+    assert data["size"] == 5
+    assert len(data["items"]) <= 5
+
+
+def test_admin_order_list_filters_and_paginates(client):
+    """GET /admin/orders supports status filtering, pagination and rejects bad status."""
+    admin_headers = {"Authorization": f"Bearer {get_admin_token(client)}"}
+
+    res = client.get("/api/admin/orders?status=pending&page=1&size=10", headers=admin_headers)
+    assert res.status_code == 200
+    data = res.json()
+    assert {"items", "total", "page", "size", "total_pages"}.issubset(data.keys())
+    assert data["page"] == 1
+    assert data["size"] == 10
+    for item in data["items"]:
+        assert item["status"] == "pending"
+
+    bad_status = client.get("/api/admin/orders?status=shipped", headers=admin_headers)
+    assert bad_status.status_code == 400

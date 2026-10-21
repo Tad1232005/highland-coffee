@@ -9,6 +9,19 @@ from app.core.config import settings
 # Password hashing context
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+# Hash of a throw-away value. Verifying a login attempt against it keeps the
+# response time roughly constant whether or not the email exists, so the
+# endpoint cannot be used to enumerate registered accounts.
+_dummy_hash: Optional[str] = None
+
+
+def get_dummy_hash() -> str:
+    """Return (and cache) a valid bcrypt hash of an unusable password."""
+    global _dummy_hash
+    if _dummy_hash is None:
+        _dummy_hash = pwd_context.hash("highland-timing-equalizer")
+    return _dummy_hash
+
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a plain password against the hashed password."""
