@@ -1,7 +1,18 @@
 from datetime import datetime
 from typing import TYPE_CHECKING, List, Optional
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Text, func
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    func,
+    text,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -43,6 +54,7 @@ class Product(Base):
         "CartItem",
         back_populates="product",
         cascade="all, delete-orphan",
+        passive_deletes=True,
     )
     order_items: Mapped[List["OrderItem"]] = relationship(
         "OrderItem",
@@ -50,8 +62,16 @@ class Product(Base):
     )
 
     __table_args__ = (
+        CheckConstraint("price >= 0", name="ck_products_price"),
         Index("ix_products_category_id", "category_id"),
         Index("ix_products_name", "name"),
+        # Partial index serving the default catalogue listing
+        # (WHERE is_available = true ORDER BY id DESC).
+        Index(
+            "ix_products_available_id",
+            "id",
+            postgresql_where=text("is_available = true"),
+        ),
     )
 
     def __repr__(self) -> str:

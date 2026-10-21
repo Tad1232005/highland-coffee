@@ -18,9 +18,13 @@ class Category(Base):
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     # Relationships
+    # passive_deletes=True: the DB enforces ON DELETE RESTRICT, so deleting a
+    # category that still owns products fails with an IntegrityError instead of
+    # the ORM trying to NULL out products.category_id.
     products: Mapped[List["Product"]] = relationship(
         "Product",
         back_populates="category",
+        passive_deletes=True,
     )
 
     def __repr__(self) -> str:
