@@ -57,3 +57,6 @@ frontend/dist-ssr/
 
 # Database / Volumes
 postgres_data/
+
+# AI agent local config (may contain API keys)
+opencode.json
