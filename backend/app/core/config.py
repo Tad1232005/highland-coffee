@@ -1,7 +1,13 @@
 from pathlib import Path
 from typing import List
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Placeholder that must never be used to sign real tokens.
+PLACEHOLDER_SECRET_KEY = "highland-coffee-super-secret-key-change-in-production-min-32-chars"
+
+MIN_SECRET_KEY_LENGTH = 32
 
 
 class Settings(BaseSettings):
@@ -23,9 +29,13 @@ class Settings(BaseSettings):
     )
 
     # Security & JWT
-    SECRET_KEY: str = "highland-coffee-super-secret-key-change-in-production-min-32-chars"
+    SECRET_KEY: str = ""
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 1 day
+
+    # Login throttling (per client IP + email, in-process sliding window)
+    LOGIN_MAX_ATTEMPTS: int = 5
+    LOGIN_RATE_LIMIT_WINDOW_SECONDS: int = 300  # 5 minutes
 
     # CORS
     BACKEND_CORS_ORIGINS: List[str] = [
@@ -47,6 +57,30 @@ class Settings(BaseSettings):
         case_sensitive=True,
         extra="ignore",
     )
+
+    @model_validator(mode="after")
+    def _validate_secret_key(self) -> "Settings":
+        """Fail fast when the JWT signing key is missing or still a placeholder.
+
+        A missing ``backend/.env`` used to silently sign tokens with a public
+        hard-coded key, which makes every deployment forgeable.
+        """
+        if not self.SECRET_KEY.strip():
+            raise ValueError(
+                "SECRET_KEY is not configured. Copy 'backend/.env.example' to 'backend/.env' "
+                f"and set SECRET_KEY to a random string of at least {MIN_SECRET_KEY_LENGTH} characters."
+            )
+        if self.SECRET_KEY == PLACEHOLDER_SECRET_KEY:
+            raise ValueError(
+                "SECRET_KEY still uses the built-in placeholder value. "
+                "Set a unique random secret in 'backend/.env' before starting the app."
+            )
+        if len(self.SECRET_KEY) < MIN_SECRET_KEY_LENGTH:
+            raise ValueError(
+                f"SECRET_KEY must be at least {MIN_SECRET_KEY_LENGTH} characters long "
+                f"(got {len(self.SECRET_KEY)})."
+            )
+        return self
 
 
 settings = Settings()

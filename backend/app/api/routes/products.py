@@ -33,23 +33,23 @@ async def list_products(
     db: AsyncSession = Depends(get_db),
 ):
     """List products with searching, category filtering, price range, and pagination."""
-    query = select(Product).options(selectinload(Product.category))
+    filters = []
 
     if available_only:
-        query = query.where(Product.is_available.is_(True))
+        filters.append(Product.is_available.is_(True))
 
     if category_id is not None:
-        query = query.where(Product.category_id == category_id)
+        filters.append(Product.category_id == category_id)
 
     if min_price is not None:
-        query = query.where(Product.price >= min_price)
+        filters.append(Product.price >= min_price)
 
     if max_price is not None:
-        query = query.where(Product.price <= max_price)
+        filters.append(Product.price <= max_price)
 
     if q and q.strip():
         search_pattern = f"%{q.strip()}%"
-        query = query.where(
+        filters.append(
             or_(
                 Product.name.ilike(search_pattern),
                 Product.description.ilike(search_pattern),
@@ -57,13 +57,20 @@ async def list_products(
         )
 
     # Count total matching products
-    count_query = select(func.count()).select_from(query.subquery())
+    count_query = select(func.count()).select_from(Product).where(*filters)
     total_result = await db.execute(count_query)
     total = total_result.scalar_one()
 
     # Pagination
     offset = (page - 1) * size
-    query = query.order_by(Product.id.desc()).offset(offset).limit(size)
+    query = (
+        select(Product)
+        .options(selectinload(Product.category))
+        .where(*filters)
+        .order_by(Product.id.desc())
+        .offset(offset)
+        .limit(size)
+    )
 
     result = await db.execute(query)
     items = result.scalars().all()

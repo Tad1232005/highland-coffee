@@ -2,6 +2,7 @@ from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db, require_admin
@@ -114,6 +115,21 @@ async def delete_category(
             detail=f"Category with ID {category_id} not found",
         )
 
-    await db.delete(category)
-    await db.commit()
+    # A category that still owns products cannot be removed: the FK
+    # products.category_id is ON DELETE RESTRICT, so the database raises an
+    # IntegrityError. Translate it into a 400 instead of letting it bubble up
+    # as a 500.
+    category_name = category.name
+    try:
+        await db.delete(category)
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"Category '{category_name}' still has products. "
+                "Move or delete its products before deleting the category."
+            ),
+        )
     return None
