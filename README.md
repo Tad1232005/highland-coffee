@@ -47,7 +47,7 @@ Dự án dùng **3 file env độc lập**, mỗi file phục vụ một thành 
 |------|--------|-----------|------------------|
 | `.env` (thư mục gốc) | `docker compose` | Không (có default) | User/password/database/port của container PostgreSQL |
 | `backend/.env` | FastAPI, Alembic, seed script | **Có** | DB URL, JWT, CORS, tài khoản admin khởi tạo |
-| `frontend/.env` | Vite | Không | `VITE_API_BASE_URL` |
+| `frontend/.env` | Vite | Không | `VITE_API_BASE_URL`, `VITE_USE_MOCK` |
 
 ```bash
 # Backend — bắt buộc
@@ -141,6 +141,9 @@ npm run dev
 ```
 
 ✅ Frontend sẽ chạy tại: `http://localhost:5173`
+> **Chế độ demo không cần backend:** `frontend/.env` mặc định `VITE_USE_MOCK=true`, frontend dùng dữ liệu giả lập trong `src/mock/`.
+> Khi muốn gọi API thật, đặt `VITE_USE_MOCK=false` (backend phải chạy tại `http://localhost:8000`).
+> Tài khoản demo ở chế độ mock: `admin@highland.vn` / `Admin@123456`, `customer@highland.vn` / `Customer@123456`.
 
 ---
 
@@ -251,13 +254,18 @@ highland-coffee/
 │   └── requirements.txt
 ├── frontend/
 │   ├── src/
-│   │   ├── api/                  # (placeholder — chưa implement)
-│   │   ├── components/           # (placeholder — chưa implement)
-│   │   ├── context/              # (placeholder — chưa implement)
-│   │   ├── pages/                # (placeholder — chưa implement)
-│   │   ├── routes/               # (placeholder — chưa implement)
-│   │   ├── App.jsx               # Vite starter template
-│   │   └── App.test.jsx          # Vitest smoke test
+│   │   ├── api/               # Axios client + services + mock switch
+│   │   ├── components/        # Header, Footer, ProductCard, PhinDrip, Modal, Toast/Confirm, ...
+│   │   ├── content/           # site.js, orders.js
+│   │   ├── context/           # AuthProvider, CartProvider, Toast/Confirm
+│   │   ├── hooks/             # useAsyncData.js, useLogout.js
+│   │   ├── mock/              # data.js + adapter.js (mock REST)
+│   │   ├── pages/             # Home, Menu, Cart, Checkout, ... + admin/
+│   │   ├── routes/            # index.jsx (RequireAuth / RequireAdmin)
+│   │   ├── styles/            # hero.css, pages.css
+│   │   ├── App.jsx            # BrowserRouter + providers
+│   │   ├── App.test.jsx       # Vitest smoke test
+│   │   └── index.css          # Design system Highlands
 │   ├── .env.example              # Template env frontend
 │   ├── Dockerfile
 │   ├── eslint.config.js          # ESLint configuration

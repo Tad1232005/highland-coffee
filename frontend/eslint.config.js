@@ -30,4 +30,11 @@ export default [
       ],
     },
   },
+  {
+    // Config files chạy bằng Node (vite.config.js, eslint.config.js)
+    files: ['*.config.js'],
+    languageOptions: {
+      globals: globals.node,
+    },
+  },
 ];

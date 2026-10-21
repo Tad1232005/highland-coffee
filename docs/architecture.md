@@ -10,15 +10,18 @@ Highland Coffee is a modern e-commerce web platform for coffee & tea ordering, i
 | Database (PostgreSQL 16, 6 tables, Alembic) | ✅ Complete |
 | Backend REST API (FastAPI) | ✅ 7/7 feature areas implemented |
 | Admin API (categories, products, orders) | ✅ API only — **no admin UI** |
-| Frontend SPA (React 19 + Vite) | ⚠️ **Scaffold only** — still the Vite starter template |
+| Frontend SPA (React 19 + Vite) | ⚠️ **Guest + Admin UI implemented, running on mock data** (`VITE_USE_MOCK=true`) |
 
 ## Architecture Layers
 1. **Frontend (Client)**:
-   - React 19 Single Page Application created with Vite.
-   - Client-side routing with React Router 7.
-   - Global Contexts (planned): `AuthContext` (User session & token management), `CartContext` (Cart items & badge count).
-   - Component-driven UI using Highlands brand colors (Crimson Red `#b22830`, Gold `#d4a373`, Dark Espresso `#2c1810`).
-   - **Note**: `src/api`, `src/components`, `src/context`, `src/pages`, `src/routes` are currently placeholders (`export default {}`). Business UI is not implemented yet.
+   - React 19 Single Page Application created with Vite 8.
+   - Client-side routing with React Router 7 (`src/routes/index.jsx` with `RequireAuth` / `RequireAdmin`).
+   - Global Contexts: `AuthProvider` (User session & token management), `CartProvider` (Cart items & badge count), `ToastProvider` + `ConfirmProvider` (user feedback, no native `alert`/`confirm`).
+   - UI primitives: `src/components/Modal.jsx` (dialog + bottom sheet), `src/pages/Login.jsx` / `src/pages/Register.jsx` (auth card, shared validators in `src/utils/validation.js`), `src/components/AccountMenu.jsx` (header dropdown) and `src/hooks/useLogout.js` (single logout flow with confirm + toast).
+   - Component-driven UI using Highlands brand colors (Roast `#1F1410`, Porcelain `#FAF7F2`, Highland Red `#D62828`, Lotus `#5A8A54`).
+   - Data layer: `src/api` exposes one `request()` entry point serving either the real Axios client or the mock adapter (`src/mock/adapter.js`), switched by `VITE_USE_MOCK`; both return the same shapes.
+   - Data loading goes through `src/hooks/useAsyncData.js` (keyed loader) to comply with the `react-hooks/set-state-in-effect` rule.
+   - **Note**: business UI (guest pages + admin pages) is implemented; the frontend currently runs on mock data and has not been wired to the real API end-to-end yet.
 
 2. **Backend (API Server)**:
    - FastAPI REST API mounted at `/api`.
