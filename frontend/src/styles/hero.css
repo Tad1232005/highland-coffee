@@ -1,0 +1,217 @@
+/* Hero: khoảnh khắc pha phin - chữ hiện dần từ dưới lên như mực nổi trên mặt nước */
+
+.hero {
+  background: var(--roast);
+  color: var(--on-roast);
+}
+
+.hero__inner {
+  display: grid;
+  align-items: center;
+  gap: var(--space-7);
+  padding-block: var(--space-8) var(--space-7);
+}
+
+@media (min-width: 960px) {
+  .hero__inner {
+    grid-template-columns: 1.02fr 0.98fr;
+    gap: var(--space-8);
+  }
+}
+
+.hero__copy {
+  display: grid;
+  gap: var(--space-5);
+  max-width: 34rem;
+}
+
+.hero__copy > * {
+  animation: pour-in var(--motion-story) var(--ease-out) both;
+}
+
+.hero__copy > *:nth-child(1) {
+  animation-delay: 0.08s;
+}
+
+.hero__copy > *:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.hero__copy > *:nth-child(3) {
+  animation-delay: 0.32s;
+}
+
+.hero__copy > *:nth-child(4) {
+  animation-delay: 0.44s;
+}
+
+.hero__figure {
+  display: grid;
+  justify-items: center;
+  animation: phin-in 1.2s var(--ease-out) both;
+}
+
+@keyframes pour-in {
+  from {
+    opacity: 0;
+    clip-path: inset(0 0 100% 0);
+  }
+
+  to {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes phin-in {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.hero__title {
+  font-size: var(--text-hero);
+  line-height: 0.98;
+  letter-spacing: -0.028em;
+  font-variation-settings: 'SOFT' 40, 'WONK' 1;
+}
+
+.hero__lead {
+  font-size: var(--text-md);
+  line-height: 1.6;
+  color: var(--on-roast-muted);
+  max-width: 46ch;
+}
+
+.hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.hero__note {
+  font-size: var(--text-sm);
+  color: var(--on-roast-muted);
+}
+
+.hero__note strong {
+  color: var(--condensed);
+  font-weight: 600;
+}
+
+.phin {
+  width: min(100%, 380px);
+  height: auto;
+}
+
+.phin__drop {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: phin-drop 4.6s var(--ease-in-out) infinite;
+}
+
+.phin__ripple {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: phin-ripple 4.6s var(--ease-in-out) infinite;
+}
+
+/* Mực trong ly dâng lên mỗi khi giọt rơi xuống */
+.phin__liquid {
+  transform-box: fill-box;
+  transform-origin: bottom;
+  animation: phin-fill 4.6s var(--ease-in-out) infinite;
+}
+
+@keyframes phin-drop {
+  0% {
+    transform: translateY(0) scale(0.4);
+    opacity: 0;
+    animation-timing-function: var(--ease-out);
+  }
+
+  8% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+    animation-timing-function: var(--ease-gravity);
+  }
+
+  44% {
+    transform: translateY(80px) scale(0.95);
+    opacity: 1;
+    animation-timing-function: var(--ease-in-out);
+  }
+
+  50% {
+    transform: translateY(90px) scale(0.5);
+    opacity: 0;
+  }
+
+  100% {
+    transform: translateY(90px) scale(0.5);
+    opacity: 0;
+  }
+}
+
+@keyframes phin-ripple {
+  0%,
+  46% {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+
+  54% {
+    transform: scale(1);
+    opacity: 0.55;
+  }
+
+  78%,
+  100% {
+    transform: scale(2.1);
+    opacity: 0;
+  }
+}
+
+@keyframes phin-fill {
+  0%,
+  8% {
+    transform: scaleY(1);
+  }
+
+  92% {
+    transform: scaleY(1.05);
+  }
+
+  100% {
+    transform: scaleY(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero__copy > *,
+  .hero__figure {
+    animation: none;
+  }
+
+  .phin__drop {
+    animation: none;
+    opacity: 1;
+    transform: translateY(24px);
+  }
+
+  .phin__ripple {
+    animation: none;
+    opacity: 0;
+  }
+
+  .phin__liquid {
+    animation: none;
+  }
+}

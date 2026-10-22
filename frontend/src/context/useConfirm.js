@@ -1,0 +1,8 @@
+import { useContext } from 'react'
+import { ConfirmContext } from './confirmContext'
+
+export function useConfirm() {
+  const context = useContext(ConfirmContext)
+  if (!context) throw new Error('useConfirm phải nằm trong <ConfirmProvider>.')
+  return context.confirm
+}
