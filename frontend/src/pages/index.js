@@ -1,2 +1,9 @@
-// Pages placeholder
-export default {};
+export { Home } from './Home'
+export { Menu } from './Menu'
+export { ProductDetail } from './ProductDetail'
+export { Cart } from './Cart'
+export { Checkout } from './Checkout'
+export { MyOrders } from './MyOrders'
+export { Login } from './Login'
+export { Register } from './Register'
+export { NotFound } from './NotFound'

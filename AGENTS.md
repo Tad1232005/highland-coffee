@@ -11,7 +11,7 @@ E-commerce web app for ordering drinks/food in the style of Highlands Coffee.
 
 - **Backend**: FastAPI REST API at `/api`, JWT auth, async SQLAlchemy.
 - **Database**: PostgreSQL 16 (Docker), 6 tables.
-- **Frontend**: React + Vite SPA. **Currently a scaffold** — business UI is not implemented yet.
+- **Frontend**: React 19 + Vite 8 SPA. **Business UI implemented** (khách + admin), chạy mock data mặc định (`VITE_USE_MOCK=true`).
 - **CI**: GitHub Actions (backend lint/format/migrate/seed/test + frontend lint/build/test).
 
 ---
@@ -162,18 +162,25 @@ HighlandCF/
 │   └── requirements.txt             # exact pins
 ├── frontend/
 │   ├── src/
-│   │   ├── api/index.js             # PLACEHOLDER
-│   │   ├── components/index.js      # PLACEHOLDER
-│   │   ├── context/index.js         # PLACEHOLDER
-│   │   ├── pages/index.js           # PLACEHOLDER
-│   │   ├── routes/index.js          # PLACEHOLDER
-│   │   ├── App.jsx                  # Vite starter template
-│   │   ├── App.test.jsx             # smoke test
-│   │   └── index.css                # Vite starter theme (not branded)
+│   │   ├── api/                # client.js (Axios + mock switch), index.js (services), session.js, errors.js
+│   │   ├── components/         # Header, Footer, ProductCard, PhinDrip, StatusBadge, Modal, Toast/Confirm provider, AccountMenu
+│   │   ├── content/            # site.js (brand info), orders.js (status machine)
+│   │   ├── context/            # AuthProvider, CartProvider, Toast/Confirm (+ useAuth/useCart/useToast/useConfirm)
+│   │   ├── hooks/              # useAsyncData.js (tải dữ liệu), useLogout.js (logout + confirm)
+│   │   ├── mock/               # data.js + adapter.js (REST giả lập mirror backend)
+│   │   ├── pages/              # Home, Menu, ProductDetail, Cart, Checkout, MyOrders, Login, Register, NotFound
+│   │   │   └── admin/          # AdminLayout, AdminLogin, AdminOrders, AdminProducts, AdminCategories
+│   │   ├── routes/index.jsx    # React Router 7 + RequireAuth / RequireAdmin
+│   │   ├── styles/             # hero.css (hero + phin rơi), pages.css (style cấp trang)
+│   │   ├── utils/format.js     # formatPrice, formatDate, slugify
+│   │   ├── App.jsx             # BrowserRouter + providers (Toast > Confirm > Auth > Cart)
+│   │   ├── App.test.jsx        # smoke test
+│   │   ├── index.css           # design system (token màu/chữ/spacing + primitive)
+│   │   └── main.jsx
 │   ├── Dockerfile
 │   ├── README.md
 │   ├── eslint.config.js
-│   ├── vite.config.js               # react plugin + vitest jsdom
+│   ├── vite.config.js          # react plugin + vitest jsdom + JSX runtime automatic
 │   └── package.json
 ├── docs/
 │   ├── architecture.md
@@ -234,7 +241,14 @@ HighlandCF/
 - JavaScript + JSX only (no TypeScript).
 - Vite + React 19 + React Router 7 + Axios.
 - Single Axios instance; attach `Authorization: Bearer <token>`; handle `401` by clearing the token.
-- Use CSS variables from `src/index.css` (currently Vite defaults — rebrand pending).
+- Use CSS variables from `src/index.css` (design system Highlands: `roast/porcelain/condensed/highland/lotus/ink`), style cấp trang nằm ở `src/styles/*.css`.
+- Bố cục dùng chung: `.page-head` (đầu trang nội bộ: tiêu đề + mô tả + chip số liệu), `.section-head` (đầu section), `.panel` (mặt phẳng trắng), `.summary` (card tổng tiền), `.product-card` (card món). Dùng lại thay vì viết style mới cho từng trang.
+- Chuyển động: dùng token `--motion-*` / `--ease-*` trong `src/index.css`. Không thêm animation vào **từng section** khi tải trang (fade-up lặp lại là dấu hiệu template); chuyển động tự phát chỉ dành cho hero. Chuyển động còn lại phải trả lời thao tác người dùng.
+- `react-hooks/set-state-in-effect` là **error**: tải dữ liệu qua `src/hooks/useAsyncData.js` (loader bọc `useCallback`), không `setState` đồng bộ trong `useEffect`.
+- Không dùng `window.alert` / `window.confirm`: dùng `useToast()` (`notify`) và `useConfirm()` (`await confirm({...})`).
+- Thứ tự provider trong `src/App.jsx` là `BrowserRouter > ToastProvider > ConfirmProvider > AuthProvider > CartProvider` (hook `useLogout` cần Toast + Confirm nằm ngoài Auth).
+- Login/Register là 2 trang riêng (`src/pages/Login.jsx`, `src/pages/Register.jsx`), dùng chung validator `src/utils/validation.js`; layout là thẻ card căn giữa (`.auth__card`), không dùng panel trượt.
+- Form không dùng attribute `required` (native validation chặn submit trước khi validate custom chạy) → dùng `noValidate` + `aria-required` + báo lỗi dưới field.
 
 ---
 
@@ -250,7 +264,8 @@ HighlandCF/
   ```
 - `tests/conftest.py`: session-scoped `TestClient`; `clean_db` autouse fixture removes test-created rows after each test (`order_items`, `orders`, `cart_items`, `categories.slug LIKE 'test-%'`, `slug LIKE 'test-%'`, `email LIKE 'user_%@example.com'`) while preserving seed data.
 - CI seeds the DB before running tests.
-- Frontend: one Vitest smoke test (`src/App.test.jsx`).
+- Frontend: 5 test file / 19 test (Vitest + Testing Library, jsdom): `src/App.test.jsx` (smoke), `src/pages/Login.test.jsx`, `src/pages/Register.test.jsx`, `src/components/ConfirmProvider.test.jsx`.
+- `vite.config.js` bật `test.globals = true` để Testing Library tự dọn DOM giữa các test.
 
 ---
 
@@ -276,7 +291,7 @@ Triggers: push/PR to `main`, `master`, `dev`.
 | API | `DELETE /categories/{id}` with existing products raises an unhandled `IntegrityError` → **500**. | Catch `IntegrityError`, return 400. | Fixed - `routes/categories.py` returns 400 |
 | Deps | Only direct Python deps are pinned; transitive deps still float. | Generate a full lock (`pip freeze` / `uv lock`). | Open |
 | Auth | `get_current_user` returns **404** when the token's user no longer exists. | Return 401. | Fixed - `deps.py` returns 401 + `WWW-Authenticate` |
-| Frontend | Business UI is not implemented: `api/components/context/pages/routes` are placeholders; `App.jsx`/`index.css` are Vite template. | Implement pages or document explicitly (README does). | Open - documented in `docs/architecture.md` |
+| Frontend | Business UI đã triển khai đầy đủ (khách + admin) nhưng mới dùng mock data; chưa nối API thật trong luồng đăng nhập/đặt hàng. | Bật `VITE_USE_MOCK=false` và test lại từng luồng với backend. | Open - UI xong, còn tích hợp API thật |
 
 ### Medium
 | Area | Issue | Suggested fix | Status |
@@ -303,7 +318,7 @@ Triggers: push/PR to `main`, `master`, `dev`.
 | Deps | `email-validator` is redundant with `pydantic[email]`. |
 | QA | No type checker (mypy/pyright), no coverage threshold, no `pip-audit`/`npm audit` in CI. |
 | Tooling | No `.nvmrc` or `engines`; local Node 24 vs CI Node 20. |
-| Files | Empty `backend/app/crud/` and empty `backend/alembic/README`; leftover Vite template assets (`react.svg`, `vite.svg`, `hero.png`, `icons.svg`). |
+| Files | Empty `backend/app/crud/` and empty `backend/alembic/README`. |
 | CI | Vitest temp artifacts (`vite.config.js.timestamp-*.mjs`) are not ignored. |
 
 ---
