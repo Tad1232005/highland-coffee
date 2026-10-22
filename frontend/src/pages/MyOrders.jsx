@@ -51,9 +51,14 @@ export function MyOrders() {
   return (
     <section className="section">
       <div className="container">
-        <div className="section-head">
-          <h1 className="section-head__title">Đơn của tôi</h1>
-          <p className="menu-result">{result.total} đơn</p>
+        <div className="page-head">
+          <div className="page-head__row">
+            <h1 className="page-head__title">Đơn của tôi</h1>
+            <p className="menu-result">{result.total} đơn</p>
+          </div>
+          <p className="page-head__lead">
+            Theo dõi trạng thái từng ly cà phê từ lúc quán nhận đơn đến khi chuyển món.
+          </p>
         </div>
 
         {placedOrderId && (

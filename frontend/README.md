@@ -188,6 +188,40 @@ Quy ước: dùng biến CSS (`--color-*`, `--space-*`) thay vì hard-code màu/
 
 ---
 
+## Hệ chuyển động
+
+Chuyển động ở đây **chậm, ít, đúng lúc**: một khoảnh khắc mở trang chủ, mọi chuyển động còn lại đều trả lời thao tác của người dùng.
+
+| Token | Dùng cho |
+|-------|----------|
+| `--motion-fast` (140ms) | hover, đổi trạng thái nhỏ |
+| `--motion-base` (220ms) | menu, toast, đóng dialog |
+| `--motion-slow` (420ms) | ảnh phóng, check vẽ tay |
+| `--motion-story` (900ms) | khoảnh khắc mở trang chủ |
+| `--ease-out` | vào (giảm tốc) |
+| `--ease-in-out` | ra, hai chiều |
+| `--ease-gravity` | giọt cà phê rơi (tăng tốc) |
+
+| Chuyển động | Khi nào |
+|-------------|---------|
+| `pour-in` — chữ hiện dần từ dưới lên như mực nổi | mở trang chủ (chỉ 1 lần, hero) |
+| `phin-drop` / `phin-fill` — giọt rơi + mực dâng lên | phin trong hero (chuyển động nền duy nhất) |
+| `draw-check` — dấu tick vẽ tay | thêm vào giỏ thành công |
+| `badge-pop` — số giỏ nhảy nhẹ | số lượng trong giỏ thay đổi |
+| `tick` — số lượng trượt lên | bấm +/− ở stepper |
+| `slide-in-right` / `slide-out-right` | toast vào / ra |
+| `scale-in` / `sheet-up` + biến thể đóng | dialog, bottom sheet |
+| `menu-drop` | menu tài khoản mở ra |
+| `pulse` | skeleton khi đang tải |
+| `steam-rise` | hơi nước cà phê bốc lên sau lưng section "Về Highlands" |
+| `banner-fade` + `banner-drift` | banner nền ảnh tự đổi: 3 ảnh crossfade 7s/ảnh + zoom chậm (ken-burns) |
+| `pour-in` (`Reveal variant="wipe"`) | dải tuyên bố ở trang chủ: câu chữ hé lên như mực nổi |
+| `Reveal variant="line"` | quy trình pha: đường kẻ vẽ ra từ trái khi tới khung nhìn |
+
+Nguyên tắc: **không** thêm animation vào từng section khi tải trang (fade-up lặp lại là dấu hiệu giao diện sinh bằng AI). Chuyển động tự phát chỉ dành cho hero. `prefers-reduced-motion: reduce` tắt toàn bộ.
+
+---
+
 ## UI primitives
 
 | Thành phần | Dùng khi nào |
@@ -196,6 +230,20 @@ Quy ước: dùng biến CSS (`--color-*`, `--space-*`) thay vì hard-code màu/
 | `ToastProvider` + `useToast()` | Thông báo kết quả thao tác: `notify('Đã lưu', { type: 'success' \| 'error' \| 'info' })` |
 | `ConfirmProvider` + `useConfirm()` | Thay `window.confirm`: `const ok = await confirm({ title, message, danger: true })` |
 | `AccountMenu` / `AccountLinks` | Menu tài khoản: dropdown trên header (desktop) và bottom sheet trong tab bar (mobile) |
+| `Loading` | Skeleton xương (3 card mờ) thay cho dòng chữ "Đang tải…" |
+| `Reveal` | Xuất hiện khi cuộn tới: `variant="fade" \| "wipe" \| "line"`, `delay` để so le nhau |
+
+### Bố cục dùng chung
+
+| Class | Vai trò |
+|-------|---------|
+| `.page-head` | Đầu trang nội bộ: tiêu đề + mô tả ngắn + chip số liệu (Menu, Giỏ, Thanh toán, Đơn của tôi) |
+| `.section-head` | Đầu section: tiêu đề + mô tả + link xem tất cả (Home, Món cùng nhóm) |
+| `.panel` | Mặt phẳng trắng có viền, dùng cho khối nội dung độc lập |
+| `.summary` | Card tổng tiền (dính khi cuộn trên desktop) |
+| `.product-card` | Card món: ảnh 4/3 + tên + mô tả + giá/nút, hover gạch chân tên + nút đổ đầy đỏ |
+
+Trang chủ bắt đầu bằng hero rồi xen kẽ 5 dải nền: **roast** (hero) → **porcelain** (món nổi bật) → **condensed** (dải tuyên bố) → **ảnh** (Về Highlands, banner tự đổi 3 ảnh trong `public/images/`) → **cream-wash** (cách pha tại nhà). Cuối trang là **một footer duy nhất** (`src/components/Footer.jsx`): thương hiệu + tagline + CTA, rồi 3 cột Ghé quán / Liên hệ / Tài khoản.
 
 Thứ tự provider trong `src/App.jsx` (quan trọng cho `useLogout`):
 

@@ -79,26 +79,29 @@ export function ProductDetail() {
           <div className="detail__body">
             {product.category && <p className="detail__category">{product.category.name}</p>}
             <h1 className="detail__title">{product.name}</h1>
-            <p className="price price--lg">{formatPrice(product.price)}</p>
             <p className="detail__desc">{product.description}</p>
 
-            <div className="detail__buy">
-              <QuantityStepper value={quantity} onChange={setQuantity} />
-              <button
-                type="button"
-                className="btn btn--primary"
-                onClick={handleAdd}
-                disabled={added}
-              >
-                {added
-                  ? 'Đã thêm vào giỏ'
-                  : `Thêm vào giỏ · ${formatPrice(product.price * quantity)}`}
-              </button>
-            </div>
+            <div className="detail__buy-box">
+              <p className="price price--lg">{formatPrice(product.price)}</p>
 
-            <p className="detail__note">
-              Pha tại quán bằng phin truyền thống. Giao trong 30 phút trong nội thành.
-            </p>
+              <div className="detail__buy">
+                <QuantityStepper value={quantity} onChange={setQuantity} />
+                <button
+                  type="button"
+                  className="btn btn--primary"
+                  onClick={handleAdd}
+                  disabled={added}
+                >
+                  {added
+                    ? 'Đã thêm vào giỏ'
+                    : `Thêm vào giỏ · ${formatPrice(product.price * quantity)}`}
+                </button>
+              </div>
+
+              <p className="detail__note">
+                Pha tại quán bằng phin truyền thống. Giao trong 30 phút trong nội thành.
+              </p>
+            </div>
           </div>
         </div>
 

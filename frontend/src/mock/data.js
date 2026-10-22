@@ -190,7 +190,7 @@ export const products = [
     slug: 'classic-phin-freeze',
     price: 59000,
     image_url:
-      'https://images.unsplash.com/photo-1558857563-b37fe4f0d36c?w=600&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?w=600&auto=format&fit=crop&q=80',
     description:
       'Dành riêng cho fan cà phê yêu thích cảm giác sảng khoái với đá xay mát rượi và vị cà phê đậm đà.',
     is_available: true,

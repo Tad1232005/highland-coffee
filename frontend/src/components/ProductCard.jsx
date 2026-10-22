@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { formatPrice } from '../utils/format'
-import { IconCheck } from './icons'
+import { IconPlus } from './icons'
 
 export function ProductCard({ product, onAdd }) {
   const [state, setState] = useState('idle')
@@ -37,11 +37,30 @@ export function ProductCard({ product, onAdd }) {
           <span className="price">{formatPrice(product.price)}</span>
           <button
             type="button"
-            className="btn btn--primary btn--sm"
+            className={`btn btn--sm product-card__add${state === 'done' ? ' is-done' : ''}`}
             onClick={handleAdd}
             disabled={state === 'busy'}
           >
-            {state === 'done' && <IconCheck width={16} height={16} />}
+            {state === 'done' ? (
+              <svg
+                className="product-card__check"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path
+                  d="M4 12.5 9.5 18 20 6.5"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            ) : (
+              <IconPlus className="product-card__plus" width={14} height={14} />
+            )}
             {state === 'done' ? 'Đã thêm' : state === 'busy' ? 'Đang thêm' : 'Thêm vào giỏ'}
           </button>
         </div>

@@ -5,24 +5,32 @@ import { useLogout } from '../hooks/useLogout'
 import { IconLogout } from './icons'
 
 export function Footer() {
-  const { user } = useAuth()
+  const { user, isAdmin } = useAuth()
   const onLogout = useLogout()
 
   return (
     <footer className="site-footer">
       <div className="container">
-        <div className="site-footer__grid">
-          <div>
+        <div className="site-footer__inner">
+          <div className="site-footer__brand">
             <p className="brand">
               <span className="brand__mark">Highlands</span>
               <span>Coffee</span>
             </p>
-            <p className="site-footer__list" style={{ marginTop: 'var(--space-3)' }}>
+            <p className="site-footer__tagline">
               Cà phê phin Việt, pha theo kiểu riêng từ năm 2013.
             </p>
+            <div className="site-footer__cta">
+              <Link to="/menu" className="btn btn--primary">
+                Xem thực đơn
+              </Link>
+              <a className="btn btn--on-dark" href={`tel:${site.phone.replaceAll(' ', '')}`}>
+                Gọi {site.phone}
+              </a>
+            </div>
           </div>
 
-          <div>
+          <div className="site-footer__col">
             <p className="site-footer__title">Ghé quán</p>
             <ul className="site-footer__list">
               <li>{site.address}</li>
@@ -30,34 +38,32 @@ export function Footer() {
             </ul>
           </div>
 
-          <div>
+          <div className="site-footer__col">
             <p className="site-footer__title">Liên hệ</p>
             <ul className="site-footer__list">
               <li>
-                <a href={`tel:${site.phone.replaceAll(' ', ' ')}`}>{site.phone}</a>
+                <a href={`tel:${site.phone.replaceAll(' ', '')}`}>{site.phone}</a>
               </li>
               <li>
                 <a href={`mailto:${site.email}`}>{site.email}</a>
               </li>
-              <li>
-                <Link to="/menu">Xem thực đơn</Link>
-              </li>
             </ul>
           </div>
 
-          <div>
+          <div className="site-footer__col">
             <p className="site-footer__title">Tài khoản</p>
             <ul className="site-footer__list">
               <li>
                 <Link to="/my-orders">Đơn của tôi</Link>
               </li>
+              {isAdmin && (
+                <li>
+                  <Link to="/admin">Khu vực quản trị</Link>
+                </li>
+              )}
               {user ? (
                 <li>
-                  <button
-                    type="button"
-                    className="site-footer__logout"
-                    onClick={onLogout}
-                  >
+                  <button type="button" className="site-footer__logout" onClick={onLogout}>
                     <IconLogout width={16} height={16} />
                     Đăng xuất
                   </button>

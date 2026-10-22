@@ -87,9 +87,14 @@ export function Cart() {
   return (
     <section className="section">
       <div className="container">
-        <div className="section-head">
-          <h1 className="section-head__title">Giỏ hàng</h1>
-          <p className="menu-result">{totalQuantity} món</p>
+        <div className="page-head">
+          <div className="page-head__row">
+            <h1 className="page-head__title">Giỏ hàng</h1>
+            <p className="menu-result">{totalQuantity} món</p>
+          </div>
+          <p className="page-head__lead">
+            Kiểm tra số lượng từng món, tổng tiền sẽ cập nhật ngay bên dưới.
+          </p>
         </div>
 
         <div className="cart">

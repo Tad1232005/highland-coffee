@@ -73,96 +73,106 @@ export function Menu() {
   return (
     <section className="section">
       <div className="container">
-        <div className="section-head">
-          <h1 className="section-head__title">Thực đơn</h1>
-          <p className="menu-result">{loading ? 'Đang tìm…' : `${result.total} món phù hợp`}</p>
-        </div>
-
-        <div className="menu-toolbar">
-          <label className="search">
-            <span className="visually-hidden">Tìm món</span>
-            <input
-              className="search__input"
-              type="search"
-              value={keyword}
-              placeholder="Tìm theo tên hoặc mô tả…"
-              onChange={(event) => handleKeyword(event.target.value)}
-            />
-          </label>
-          <label className="field field--inline">
-            <span className="visually-hidden">Lọc theo giá</span>
-            <select
-              className="field__control"
-              value={priceRange}
-              onChange={(event) => {
-                setPriceRange(event.target.value)
-                setPage(1)
-              }}
-            >
-              {PRICE_RANGES.map((range) => (
-                <option key={range.value} value={range.value}>
-                  {range.label}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-
-        <CategoryTabs
-          items={categories ?? []}
-          value={categoryId}
-          onChange={(id) => {
-            setCategoryId(id)
-            setPage(1)
-          }}
-        />
-
-        {error && <p className="notice notice--error">{error}</p>}
-        {loading && <Loading label="Đang tải món" />}
-
-        {!loading && !error && result.items.length === 0 && (
-          <EmptyState
-            title="Không có món nào khớp"
-            text="Thử bỏ bớt điều kiện lọc hoặc tìm bằng tên khác — ví dụ “phin”, “trà sen”."
-            action={
-              <button type="button" className="btn btn--outline" onClick={resetFilters}>
-                Xoá điều kiện lọc
-              </button>
-            }
-          />
-        )}
-
-        {!loading && result.items.length > 0 && (
-          <div className="menu-grid">
-            {result.items.map((product) => (
-              <ProductCard key={product.id} product={product} onAdd={handleAdd} />
-            ))}
+        <div className="page-head">
+          <div className="page-head__row">
+            <h1 className="page-head__title">Thực đơn</h1>
+            <p className="menu-result">{loading ? 'Đang tìm…' : `${result.total} món phù hợp`}</p>
           </div>
-        )}
+          <p className="page-head__lead">
+            Chọn nhóm món bên dưới, hoặc tìm theo tên và khoảng giá để tới đúng ly bạn đang cần.
+          </p>
+        </div>
 
-        {result.total_pages > 1 && (
-          <nav className="pagination" aria-label="Phân trang">
-            <button
-              type="button"
-              className="btn btn--outline btn--sm"
-              onClick={() => setPage((current) => Math.max(1, current - 1))}
-              disabled={page <= 1}
-            >
-              Trang trước
-            </button>
-            <span className="pagination__status">
-              Trang {page} / {result.total_pages}
-            </span>
-            <button
-              type="button"
-              className="btn btn--outline btn--sm"
-              onClick={() => setPage((current) => Math.min(result.total_pages, current + 1))}
-              disabled={page >= result.total_pages}
-            >
-              Trang sau
-            </button>
-          </nav>
-        )}
+        <div className="menu-layout">
+          <CategoryTabs
+            items={categories ?? []}
+            value={categoryId}
+            variant="rail"
+            onChange={(id) => {
+              setCategoryId(id)
+              setPage(1)
+            }}
+          />
+
+          <div className="menu-main">
+            <div className="menu-toolbar">
+              <label className="search">
+                <span className="visually-hidden">Tìm món</span>
+                <input
+                  className="search__input"
+                  type="search"
+                  value={keyword}
+                  placeholder="Tìm theo tên hoặc mô tả…"
+                  onChange={(event) => handleKeyword(event.target.value)}
+                />
+              </label>
+              <label className="field field--inline">
+                <span className="visually-hidden">Lọc theo giá</span>
+                <select
+                  className="field__control"
+                  value={priceRange}
+                  onChange={(event) => {
+                    setPriceRange(event.target.value)
+                    setPage(1)
+                  }}
+                >
+                  {PRICE_RANGES.map((range) => (
+                    <option key={range.value} value={range.value}>
+                      {range.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            {error && <p className="notice notice--error">{error}</p>}
+            {loading && <Loading label="Đang tải món" />}
+
+            {!loading && !error && result.items.length === 0 && (
+              <EmptyState
+                title="Không có món nào khớp"
+                text="Thử bỏ bớt điều kiện lọc hoặc tìm bằng tên khác — ví dụ “phin”, “trà sen”."
+                action={
+                  <button type="button" className="btn btn--outline" onClick={resetFilters}>
+                    Xoá điều kiện lọc
+                  </button>
+                }
+              />
+            )}
+
+            {!loading && result.items.length > 0 && (
+              <div className="menu-grid">
+                {result.items.map((product) => (
+                  <ProductCard key={product.id} product={product} onAdd={handleAdd} />
+                ))}
+              </div>
+            )}
+
+            {result.total_pages > 1 && (
+              <nav className="pagination" aria-label="Phân trang">
+                <button
+                  type="button"
+                  className="btn btn--outline btn--sm"
+                  onClick={() => setPage((current) => Math.max(1, current - 1))}
+                  disabled={page <= 1}
+                >
+                  Trang trước
+                </button>
+                <span className="pagination__status">
+                  Trang {page} / {result.total_pages}
+                </span>
+                <button
+                  type="button"
+                  className="btn btn--outline btn--sm"
+                  onClick={() => setPage((current) => Math.min(result.total_pages, current + 1))}
+                  disabled={page >= result.total_pages}
+                >
+                  Trang sau
+                </button>
+              </nav>
+            )}
+          </div>
+        </div>
       </div>
     </section>
   )

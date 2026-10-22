@@ -53,7 +53,7 @@ export function PhinDrip() {
       <circle className="phin__drop" cx="210" cy="268" r="5.5" fill="#f0dfc0" />
 
       {/* Ly sữa đá */}
-      <g clipPath="url(#phin-glass-clip)">
+      <g className="phin__liquid" clipPath="url(#phin-glass-clip)">
         <rect x="150" y="392" width="120" height="48" fill="#f0dfc0" />
         <rect x="150" y="350" width="120" height="42" fill="url(#phin-coffee)" />
         <rect

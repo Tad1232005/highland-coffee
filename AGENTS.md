@@ -242,6 +242,8 @@ HighlandCF/
 - Vite + React 19 + React Router 7 + Axios.
 - Single Axios instance; attach `Authorization: Bearer <token>`; handle `401` by clearing the token.
 - Use CSS variables from `src/index.css` (design system Highlands: `roast/porcelain/condensed/highland/lotus/ink`), style cấp trang nằm ở `src/styles/*.css`.
+- Bố cục dùng chung: `.page-head` (đầu trang nội bộ: tiêu đề + mô tả + chip số liệu), `.section-head` (đầu section), `.panel` (mặt phẳng trắng), `.summary` (card tổng tiền), `.product-card` (card món). Dùng lại thay vì viết style mới cho từng trang.
+- Chuyển động: dùng token `--motion-*` / `--ease-*` trong `src/index.css`. Không thêm animation vào **từng section** khi tải trang (fade-up lặp lại là dấu hiệu template); chuyển động tự phát chỉ dành cho hero. Chuyển động còn lại phải trả lời thao tác người dùng.
 - `react-hooks/set-state-in-effect` là **error**: tải dữ liệu qua `src/hooks/useAsyncData.js` (loader bọc `useCallback`), không `setState` đồng bộ trong `useEffect`.
 - Không dùng `window.alert` / `window.confirm`: dùng `useToast()` (`notify`) và `useConfirm()` (`await confirm({...})`).
 - Thứ tự provider trong `src/App.jsx` là `BrowserRouter > ToastProvider > ConfirmProvider > AuthProvider > CartProvider` (hook `useLogout` cần Toast + Confirm nằm ngoài Auth).

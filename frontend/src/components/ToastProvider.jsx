@@ -19,12 +19,17 @@ export function ToastProvider({ children }) {
   const timers = useRef(new Map())
 
   const dismiss = useCallback((id) => {
-    setToasts((current) => current.filter((toast) => toast.id !== id))
+    setToasts((current) =>
+      current.map((toast) => (toast.id === id ? { ...toast, closing: true } : toast)),
+    )
     const timer = timers.current.get(id)
     if (timer) {
       clearTimeout(timer)
       timers.current.delete(id)
     }
+    setTimeout(() => {
+      setToasts((current) => current.filter((toast) => toast.id !== id))
+    }, 220)
   }, [])
 
   const notify = useCallback(
@@ -50,7 +55,10 @@ export function ToastProvider({ children }) {
         {toasts.map((toast) => {
           const Icon = ICONS[toast.type] ?? IconInfo
           return (
-            <div key={toast.id} className={`toast toast--${toast.type}`}>
+            <div
+              key={toast.id}
+              className={`toast toast--${toast.type}${toast.closing ? ' is-closing' : ''}`}
+            >
               <span className="toast__icon">
                 <Icon width={18} height={18} />
               </span>

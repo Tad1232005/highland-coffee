@@ -1,10 +1,30 @@
 import { useCallback, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { categories as categoriesApi, products as productsApi } from '../api'
-import { CategoryTabs, EmptyState, Loading, PhinDrip, ProductCard } from '../components'
+import { CategoryTabs, EmptyState, Loading, PhinDrip, PhotoBackdrop, ProductCard, Reveal } from '../components'
+import { IconClock, IconCup, IconSpark } from '../components/icons'
 import { useCart } from '../context/useCart'
 import { useAsyncData } from '../hooks/useAsyncData'
 import { formatPrice } from '../utils/format'
+
+const STEPS = [
+  {
+    title: 'Chuẩn bị',
+    text: 'Sữa đặc ở đáy ly, phin rửa sạch, cà phê xay vừa phải.',
+  },
+  {
+    title: 'Rót nước',
+    text: 'Nước 95°C rót nhẹ vào phin, đậy nắp giữ nhiệt hai phút.',
+  },
+  {
+    title: 'Nhỏ giọt',
+    text: 'Nắn nhẹ nắp phin, để cà phê rơi từng giọt xuống sữa.',
+  },
+  {
+    title: 'Thưởng thức',
+    text: 'Khuấy nhẹ, thêm đá và uống khi còn ấm.',
+  },
+]
 
 export function Home() {
   const { add } = useCart()
@@ -75,8 +95,13 @@ export function Home() {
 
       <section className="section">
         <div className="container">
-          <div className="section-head">
-            <h2 className="section-head__title">Món đang được gọi</h2>
+          <div className="section-head section-head--tight">
+            <div>
+              <h2 className="section-head__title">Món đang được gọi</h2>
+              <p className="section-head__lead">
+                Ly phin, trà tuyệt hảo và bánh ngọt làm mới mỗi ngày.
+              </p>
+            </div>
             <Link to="/menu" className="section-head__link">
               Xem đủ {all.length} món
             </Link>
@@ -111,6 +136,114 @@ export function Home() {
               ))}
             </div>
           )}
+        </div>
+      </section>
+
+      <section className="statement">
+        <div className="container statement__inner">
+          <div>
+            <span className="statement__rule" aria-hidden="true" />
+            <Reveal as="h2" variant="wipe" className="statement__title">
+              Ba phút cho một ly đậm
+            </Reveal>
+          </div>
+
+          <div>
+            <p className="statement__text">
+              Nước 95 độ rót nhẹ vào phin, giọt cà phê rơi từng giọt, sữa đặc quyện đều. Không có cách
+              nào làm nhanh hơn mà vẫn ngon.
+            </p>
+
+            <dl className="statement__facts">
+              <Reveal as="div" delay={80} className="statement__fact">
+                <dt>95°C</dt>
+                <dd>Nhiệt độ nước để cà phê ra vị, không chát</dd>
+              </Reveal>
+              <Reveal as="div" delay={160} className="statement__fact">
+                <dt>3 phút</dt>
+                <dd>Thời gian để giọt cà phê ngấm hết trong phin</dd>
+              </Reveal>
+              <Reveal as="div" delay={240} className="statement__fact">
+                <dt>100%</dt>
+                <dd>Robusta Đắk Lắk, rang mộc từng lô nhỏ</dd>
+              </Reveal>
+            </dl>
+          </div>
+        </div>
+      </section>
+
+      <section className="section photo-band">
+        <PhotoBackdrop />
+        <div className="photo-band__scrim" aria-hidden="true" />
+
+        <div className="container">
+          <div className="section-head section-head--on-dark">
+            <div>
+              <h2 className="section-head__title">Về Highlands</h2>
+              <p className="section-head__lead">
+                Một ly phin đúng cách bắt đầu từ hạt cà phê và kỹ thuật pha.
+              </p>
+            </div>
+          </div>
+
+          <ul className="feature-grid">
+            <li className="feature">
+              <span className="feature__icon">
+                <IconCup width={20} height={20} />
+              </span>
+              <div>
+                <h3 className="feature__title">Cà phê tuyển chọn</h3>
+                <p className="feature__text">
+                  Robusta Đắk Lắk đạt chuẩn, rang mộc mỗi đợt để giữ trọn vị đất và hậu vị ngọt.
+                </p>
+              </div>
+            </li>
+            <li className="feature">
+              <span className="feature__icon">
+                <IconSpark width={20} height={20} />
+              </span>
+              <div>
+                <h3 className="feature__title">Pha phin truyền thống</h3>
+                <p className="feature__text">
+                  Chính phin, giọt chậm, sữa đá để thành đúng độ đậm như quán truyền thống.
+                </p>
+              </div>
+            </li>
+            <li className="feature">
+              <span className="feature__icon">
+                <IconClock width={20} height={20} />
+              </span>
+              <div>
+                <h3 className="feature__title">Giao nhanh trong giờ</h3>
+                <p className="feature__text">
+                  Đặt món trên web, quán gọi xác nhận và chuyển món tận nơi chỉ trong 30 phút.
+                </p>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <section className="process">
+        <div className="container">
+          <div className="section-head">
+            <div>
+              <h2 className="section-head__title">Cách pha phin tại nhà</h2>
+              <p className="section-head__lead">
+                Bốn bước với đúng dụng cụ bạn đã có trong bếp.
+              </p>
+            </div>
+          </div>
+
+          <ol className="process__grid">
+            {STEPS.map((step, index) => (
+              <Reveal as="li" key={step.title} variant="line" delay={index * 90} className="process__step">
+                <span className="process__num">0{index + 1}</span>
+                <h3 className="process__title">{step.title}</h3>
+                <p className="process__text">{step.text}</p>
+              </Reveal>
+            ))}
+          </ol>
         </div>
       </section>
     </>

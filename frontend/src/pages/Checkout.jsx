@@ -71,44 +71,55 @@ export function Checkout() {
   return (
     <section className="section">
       <div className="container">
-        <div className="section-head">
-          <h1 className="section-head__title">Thanh toán</h1>
-          <p className="menu-result">{items.length} món trong giỏ</p>
+        <div className="page-head">
+          <div className="page-head__row">
+            <h1 className="page-head__title">Thanh toán</h1>
+            <p className="menu-result">{items.length} món trong giỏ</p>
+          </div>
+          <p className="page-head__lead">
+            Điền thông tin người nhận, quán sẽ gọi xác nhận trước khi chuyển món.
+          </p>
         </div>
 
         <div className="cart">
           <form className="checkout" onSubmit={handleSubmit}>
             {error && <p className="notice notice--error">{error}</p>}
 
-            <div className="field">
-              <label className="field__label" htmlFor="receiver_name">
-                Người nhận
-              </label>
-              <input
-                id="receiver_name"
-                className="field__control"
-                value={form.receiver_name}
-                onChange={update('receiver_name')}
-                required
-              />
+            <h2 className="checkout__section-title">Thông tin người nhận</h2>
+
+            <div className="checkout__row">
+              <div className="field">
+                <label className="field__label" htmlFor="receiver_name">
+                  Người nhận
+                </label>
+                <input
+                  id="receiver_name"
+                  className="field__control"
+                  value={form.receiver_name}
+                  onChange={update('receiver_name')}
+                  required
+                />
+              </div>
+
+              <div className="field">
+                <label className="field__label" htmlFor="phone">
+                  Số điện thoại
+                </label>
+                <input
+                  id="phone"
+                  className="field__control"
+                  type="tel"
+                  inputMode="tel"
+                  placeholder="09xx xxx xxx"
+                  value={form.phone}
+                  onChange={update('phone')}
+                  required
+                />
+                <p className="field__hint">Quán gọi để xác nhận trước khi chuyển món.</p>
+              </div>
             </div>
 
-            <div className="field">
-              <label className="field__label" htmlFor="phone">
-                Số điện thoại
-              </label>
-              <input
-                id="phone"
-                className="field__control"
-                type="tel"
-                inputMode="tel"
-                placeholder="09xx xxx xxx"
-                value={form.phone}
-                onChange={update('phone')}
-                required
-              />
-              <p className="field__hint">Quán gọi để xác nhận trước khi chuyển món.</p>
-            </div>
+            <h2 className="checkout__section-title">Giao hàng</h2>
 
             <div className="field">
               <label className="field__label" htmlFor="address">
@@ -133,14 +144,14 @@ export function Checkout() {
                 id="note"
                 className="field__control"
                 rows="2"
-                placeholder="Ít đá, thêm sữa, giao sau 15h…"
+                placeholder="Ít đá, thêm sữa, giao sau 15h."
                 value={form.note}
                 onChange={update('note')}
               />
             </div>
 
-            <button type="submit" className="btn btn--primary" disabled={submitting}>
-              {submitting ? 'Đang gửi đơn' : 'Đặt món'}
+            <button type="submit" className="btn btn--primary btn--block" disabled={submitting}>
+              {submitting ? 'Đang gửi đơn…' : 'Đặt món'}
             </button>
           </form>
 

@@ -29,6 +29,9 @@
   --on-roast: #f7f0e6;
   --on-roast-muted: #c2b1a2;
   --line-on-roast: rgba(240, 223, 192, 0.18);
+  --on-condensed: #3a2c22;
+  --on-condensed-muted: #6b5544;
+  --line-on-condensed: rgba(43, 33, 28, 0.18);
 
   /* ---- Trạng thái đơn hàng (màu chức năng) ---- */
   --st-pending: #a96c12;
@@ -70,10 +73,19 @@
   --shadow-header: 0 12px 28px -20px rgba(31, 20, 16, 0.75);
   --shadow-pop: 0 24px 60px -32px rgba(31, 20, 16, 0.55);
   --shadow-btn: 0 8px 18px -12px rgba(31, 20, 16, 0.45);
-  --shadow-btn-primary: 0 12px 24px -14px rgba(214, 40, 40, 0.75);
+  --shadow-btn-primary: 0 6px 14px -9px rgba(214, 40, 40, 0.55);
 
   --container: 1200px;
   --ease: cubic-bezier(0.2, 0.7, 0.3, 1);
+
+  /* ---- Chuyển động: chậm, ít, đúng lúc ---- */
+  --motion-fast: 140ms;
+  --motion-base: 220ms;
+  --motion-slow: 420ms;
+  --motion-story: 900ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-gravity: cubic-bezier(0.55, 0.06, 0.68, 0.19);
 }
 
 /* ---------- Reset & base ---------- */
@@ -111,6 +123,7 @@ h4 {
   line-height: 1.08;
   letter-spacing: -0.015em;
   font-variation-settings: 'SOFT' 20, 'WONK' 1;
+  text-wrap: balance;
 }
 
 p {
@@ -193,14 +206,6 @@ button {
   color: var(--ink-muted);
 }
 
-.eyebrow {
-  font-size: var(--text-sm);
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--ink-faint);
-}
-
 .section-head {
   display: flex;
   flex-wrap: wrap;
@@ -215,6 +220,32 @@ button {
   font-size: var(--text-xl);
 }
 
+/* Khi ngay dưới là dải tab (đã có đường kẻ riêng) thì bỏ đường kẻ của head */
+.section-head--tight {
+  padding-bottom: var(--space-2);
+  border-bottom: 0;
+}
+
+/* Head trên nền tối (banner ảnh) */
+.section-head--on-dark {
+  border-bottom-color: var(--line-on-roast);
+}
+
+.section-head--on-dark .section-head__title {
+  color: var(--on-roast);
+}
+
+.section-head--on-dark .section-head__lead {
+  color: var(--on-roast-muted);
+}
+
+.section-head__lead {
+  margin-top: var(--space-1);
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+  max-width: 56ch;
+}
+
 .section-head__link {
   font-size: var(--text-sm);
   font-weight: 600;
@@ -225,6 +256,48 @@ button {
 
 .section-head__link:hover {
   color: #a81f1f;
+}
+
+/* Header dùng chung cho các trang nội bộ */
+.page-head {
+  display: grid;
+  gap: var(--space-2);
+  padding-bottom: var(--space-5);
+  margin-bottom: var(--space-5);
+  border-bottom: 1px solid var(--line);
+}
+
+.page-head__title {
+  font-size: clamp(1.65rem, 1.2rem + 2vw, 2.25rem);
+  line-height: 1.1;
+}
+
+.page-head__lead {
+  color: var(--ink-muted);
+  max-width: 62ch;
+  font-size: var(--text-sm);
+}
+
+.page-head__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+/* Mặt phẳng trắng dùng chung (card, khối nội dung) */
+.panel {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: var(--space-5);
+}
+
+@media (min-width: 900px) {
+  .panel {
+    padding: var(--space-6);
+  }
 }
 
 .hairline {
@@ -291,7 +364,7 @@ button {
 .btn--primary:hover:not(:disabled) {
   background: #b92121;
   border-color: #b92121;
-  box-shadow: 0 16px 28px -14px rgba(214, 40, 40, 0.8);
+  box-shadow: 0 10px 18px -10px rgba(214, 40, 40, 0.6);
 }
 
 .btn--outline {
@@ -497,14 +570,14 @@ button {
 /* ---------- Price ---------- */
 
 .price {
+  font-family: var(--font-display);
+  font-weight: 600;
   color: var(--highland);
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
   letter-spacing: -0.01em;
 }
 
 .price--lg {
-  font-size: var(--text-lg);
+  font-size: var(--text-xl);
 }
 
 /* ---------- Header ---------- */
@@ -542,10 +615,8 @@ button {
 
 .brand__since {
   font-family: var(--font-body);
-  font-size: 0.65rem;
+  font-size: 0.7rem;
   font-weight: 500;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
   color: var(--on-roast-muted);
 }
 
@@ -607,6 +678,21 @@ button {
   font-size: 0.7rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+  animation: badge-pop var(--motion-slow) var(--ease-out) both;
+}
+
+@keyframes badge-pop {
+  0% {
+    transform: scale(0.6);
+  }
+
+  60% {
+    transform: scale(1.18);
+  }
+
+  100% {
+    transform: scale(1);
+  }
 }
 
 @media (min-width: 900px) {
@@ -661,33 +747,69 @@ button {
 /* ---------- Footer ---------- */
 
 .site-footer {
-  margin-top: var(--space-9);
+  margin-top: 0;
   background: var(--roast);
   color: var(--on-roast);
   padding-block: var(--space-7) var(--space-6);
 }
 
-.site-footer__grid {
+.site-footer__inner {
   display: grid;
-  gap: var(--space-6);
+  gap: var(--space-6) var(--space-5);
   grid-template-columns: 1fr;
 }
 
-@media (min-width: 720px) {
-  .site-footer__grid {
-    grid-template-columns: 1.3fr 1fr 1fr 1fr;
+@media (min-width: 560px) {
+  .site-footer__inner {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 900px) {
+  .site-footer__inner {
+    grid-template-columns: minmax(0, 1.5fr) repeat(3, minmax(0, 1fr));
     gap: var(--space-7);
   }
+}
+
+.site-footer__brand {
+  display: grid;
+  gap: var(--space-3);
+  align-content: start;
+  max-width: 26rem;
+}
+
+@media (min-width: 900px) {
+  .site-footer__brand {
+    padding-right: var(--space-5);
+  }
+}
+
+.site-footer__tagline {
+  font-size: var(--text-sm);
+  color: var(--on-roast-muted);
+  max-width: 34ch;
+}
+
+.site-footer__cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+
+.site-footer__col {
+  display: grid;
+  gap: var(--space-3);
+  align-content: start;
 }
 
 .site-footer__title {
   font-family: var(--font-body);
   font-size: var(--text-sm);
   font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
   color: var(--condensed);
-  margin-bottom: var(--space-3);
+  margin-bottom: var(--space-2);
 }
 
 .site-footer__list {
@@ -765,18 +887,6 @@ button {
 
 /* ---------- Motion ---------- */
 
-@keyframes fade-up {
-  from {
-    opacity: 0;
-    transform: translate3d(0, 14px, 0);
-  }
-
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
 @keyframes fade-in {
   from {
     opacity: 0;
@@ -799,18 +909,6 @@ button {
   }
 }
 
-@keyframes slide-in-right {
-  from {
-    opacity: 0;
-    transform: translate3d(18px, 0, 0);
-  }
-
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
 @keyframes sheet-up {
   from {
     transform: translate3d(0, 100%, 0);
@@ -821,20 +919,14 @@ button {
   }
 }
 
-.rise {
-  animation: fade-up 0.5s var(--ease) both;
-}
+@keyframes sheet-down {
+  from {
+    transform: none;
+  }
 
-.rise--1 {
-  animation-delay: 0.06s;
-}
-
-.rise--2 {
-  animation-delay: 0.12s;
-}
-
-.rise--3 {
-  animation-delay: 0.18s;
+  to {
+    transform: translate3d(0, 100%, 0);
+  }
 }
 
 /* ---------- Buttons (bổ sung) ---------- */
@@ -894,7 +986,69 @@ button {
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-pop);
   pointer-events: auto;
-  animation: slide-in-right 0.32s var(--ease) both;
+  animation: slide-in-right var(--motion-slow) var(--ease-out) both;
+}
+
+.toast.is-closing {
+  animation: slide-out-right var(--motion-base) var(--ease-in-out) both;
+}
+
+@keyframes slide-in-right {
+  from {
+    opacity: 0;
+    transform: translate3d(24px, 0, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes slide-out-right {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+
+  to {
+    opacity: 0;
+    transform: translate3d(24px, 0, 0);
+  }
+}
+
+@media (max-width: 640px) {
+  .toast {
+    animation: toast-drop var(--motion-slow) var(--ease-out) both;
+  }
+
+  .toast.is-closing {
+    animation: toast-lift var(--motion-base) var(--ease-in-out) both;
+  }
+
+  @keyframes toast-drop {
+    from {
+      opacity: 0;
+      transform: translate3d(0, -16px, 0);
+    }
+
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes toast-lift {
+    from {
+      opacity: 1;
+      transform: none;
+    }
+
+    to {
+      opacity: 0;
+      transform: translate3d(0, -16px, 0);
+    }
+  }
 }
 
 .toast--success {
@@ -971,7 +1125,7 @@ button {
   inset: 0;
   background: rgba(31, 20, 16, 0.55);
   backdrop-filter: blur(4px);
-  animation: fade-in 0.2s var(--ease) both;
+  animation: fade-in var(--motion-base) var(--ease) both;
 }
 
 .modal__panel {
@@ -982,7 +1136,15 @@ button {
   background: #fff;
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-pop);
-  animation: scale-in 0.28s var(--ease) both;
+  animation: scale-in var(--motion-slow) var(--ease-out) both;
+}
+
+.modal.is-closing .modal__backdrop {
+  animation: fade-in var(--motion-base) var(--ease-in-out) reverse both;
+}
+
+.modal.is-closing .modal__panel {
+  animation: scale-in var(--motion-base) var(--ease-in-out) reverse both;
 }
 
 .modal__panel--sm {
@@ -1004,7 +1166,11 @@ button {
   max-width: none;
   max-height: 82vh;
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  animation: sheet-up 0.32s var(--ease) both;
+  animation: sheet-up var(--motion-slow) var(--ease-out) both;
+}
+
+.modal.is-closing .modal__panel--sheet {
+  animation: sheet-down var(--motion-base) var(--ease-in-out) both;
 }
 
 .modal__head {
@@ -1102,6 +1268,13 @@ button {
   white-space: nowrap;
 }
 
+@media (max-width: 640px) {
+  .account__name,
+  .brand__since {
+    display: none;
+  }
+}
+
 .account__menu {
   position: absolute;
   top: calc(100% + 0.6rem);
@@ -1114,7 +1287,19 @@ button {
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-pop);
-  animation: scale-in 0.18s var(--ease) both;
+  animation: menu-drop var(--motion-base) var(--ease-out) both;
+}
+
+@keyframes menu-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 .account__menu.is-open {

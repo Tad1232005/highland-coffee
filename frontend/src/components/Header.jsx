@@ -39,7 +39,11 @@ export function Header() {
           <Link to="/cart" className="header-action" aria-label="Giỏ hàng">
             <IconCart />
             <span className="header-action__label">Giỏ</span>
-            {totalQuantity > 0 && <span className="cart-badge">{totalQuantity}</span>}
+            {totalQuantity > 0 && (
+              <span key={totalQuantity} className="cart-badge">
+                {totalQuantity}
+              </span>
+            )}
           </Link>
 
           <AccountMenu />

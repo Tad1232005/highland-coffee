@@ -12,7 +12,9 @@ export function QuantityStepper({ value, onChange, min = 1, max = 99, label = 'S
       >
         <IconMinus width={16} height={16} />
       </button>
-      <span className="stepper__value">{value}</span>
+      <span key={value} className="stepper__value">
+        {value}
+      </span>
       <button
         type="button"
         className="stepper__btn"
