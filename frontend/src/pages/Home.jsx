@@ -27,7 +27,7 @@ const STEPS = [
 ]
 
 export function Home() {
-  const { add } = useCart()
+  const { add, mutating } = useCart()
   const [activeCategory, setActiveCategory] = useState(null)
 
   const loader = useCallback(async () => {
@@ -72,8 +72,8 @@ export function Home() {
               <button
                 type="button"
                 className="btn btn--primary"
-                onClick={() => heroProduct && handleAdd(heroProduct)}
-                disabled={!heroProduct}
+                onClick={() => { if (heroProduct) handleAdd(heroProduct).catch(() => {}) }}
+                disabled={!heroProduct || mutating}
               >
                 Thêm Phin Sữa Đá vào giỏ
               </button>
@@ -132,7 +132,7 @@ export function Home() {
           {!loading && featured.length > 0 && (
             <div className="menu-grid">
               {featured.map((product) => (
-                <ProductCard key={product.id} product={product} onAdd={handleAdd} />
+                  <ProductCard key={product.id} product={product} onAdd={handleAdd} disabled={mutating} />
               ))}
             </div>
           )}

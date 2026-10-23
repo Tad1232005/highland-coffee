@@ -76,6 +76,7 @@
   --shadow-btn-primary: 0 6px 14px -9px rgba(214, 40, 40, 0.55);
 
   --container: 1200px;
+  --mobile-tabbar-height: 64px;
   --ease: cubic-bezier(0.2, 0.7, 0.3, 1);
 
   /* ---- Chuyển động: chậm, ít, đúng lúc ---- */
@@ -721,6 +722,8 @@ button {
 }
 
 .tabbar__item {
+  min-height: var(--mobile-tabbar-height);
+  height: var(--mobile-tabbar-height);
   display: grid;
   justify-items: center;
   gap: 2px;

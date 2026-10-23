@@ -1,8 +1,4 @@
-/**
- * Danh mục món: bản ngang (mặc định) hoặc cột dọc (rail) cho trang thực đơn.
- * - `inline`: chữ + gạch chân đỏ ở mục đang chọn.
- * - `rail`: cột dọc bên trái, mục đang chọn có gạch dọc đỏ.
- */
+/** Bộ lọc danh mục dùng button: Tab để di chuyển, Enter/Space để chọn. */
 export function CategoryTabs({
   items,
   value,
@@ -10,23 +6,14 @@ export function CategoryTabs({
   allLabel = 'Tất cả',
   variant = 'inline',
 }) {
+  const choices = [{ id: null, name: allLabel }, ...items]
   return (
-    <div className={`tabs tabs--${variant}`} role="tablist" aria-label="Nhóm món">
-      <button
-        type="button"
-        role="tab"
-        aria-selected={value === null}
-        className={`tab${value === null ? ' is-active' : ''}`}
-        onClick={() => onChange(null)}
-      >
-        {allLabel}
-      </button>
-      {items.map((item) => (
+    <div className={`tabs tabs--${variant}`} role="group" aria-label="Nhóm món">
+      {choices.map((item) => (
         <button
-          key={item.id}
+          key={item.id ?? 'all'}
           type="button"
-          role="tab"
-          aria-selected={value === item.id}
+          aria-pressed={value === item.id}
           className={`tab${value === item.id ? ' is-active' : ''}`}
           onClick={() => onChange(item.id)}
         >

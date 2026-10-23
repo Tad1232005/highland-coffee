@@ -1,5 +1,22 @@
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 
+export const normalizeCheckout = (form) => ({
+  receiver_name: form.receiver_name.trim(),
+  phone: form.phone.replace(/\s/g, ''),
+  address: form.address.trim(),
+  note: form.note.trim() || null,
+})
+
+export const validateCheckout = (form) => {
+  const data = normalizeCheckout(form)
+  const errors = {}
+  if (!data.receiver_name) errors.receiver_name = 'Vui lòng nhập tên người nhận.'
+  else if (data.receiver_name.length > 200) errors.receiver_name = 'Tên người nhận tối đa 200 ký tự.'
+  if (!/^0\d{8,10}$/.test(data.phone)) errors.phone = 'Số điện thoại chưa hợp lệ.'
+  if (data.address.length < 3) errors.address = 'Vui lòng nhập địa chỉ giao hàng ít nhất 3 ký tự.'
+  return errors
+}
+
 export const validateLogin = (form) => {
   const errors = {}
   if (!form.email.trim()) errors.email = 'Vui lòng nhập email.'

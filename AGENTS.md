@@ -249,6 +249,7 @@ HighlandCF/
 - Thứ tự provider trong `src/App.jsx` là `BrowserRouter > ToastProvider > ConfirmProvider > AuthProvider > CartProvider` (hook `useLogout` cần Toast + Confirm nằm ngoài Auth).
 - Login/Register là 2 trang riêng (`src/pages/Login.jsx`, `src/pages/Register.jsx`), dùng chung validator `src/utils/validation.js`; layout là thẻ card căn giữa (`.auth__card`), không dùng panel trượt.
 - Form không dùng attribute `required` (native validation chặn submit trước khi validate custom chạy) → dùng `noValidate` + `aria-required` + báo lỗi dưới field.
+- UI khách hàng: Menu có chip lọc/reset; chi tiết món có CTA cố định trên mobile; giỏ hàng phân biệt loading/error/empty. `CartProvider` khóa mutation dùng chung, bao gồm `placeOrder`, và reset state theo tài khoản. Checkout hiển thị xác nhận từ response tạo đơn, không gọi DELETE giỏ lần hai. MyOrders phân trang 10 đơn và dùng vùng mở rộng chi tiết.
 
 ---
 
@@ -264,7 +265,7 @@ HighlandCF/
   ```
 - `tests/conftest.py`: session-scoped `TestClient`; `clean_db` autouse fixture removes test-created rows after each test (`order_items`, `orders`, `cart_items`, `categories.slug LIKE 'test-%'`, `slug LIKE 'test-%'`, `email LIKE 'user_%@example.com'`) while preserving seed data.
 - CI seeds the DB before running tests.
-- Frontend: 5 test file / 19 test (Vitest + Testing Library, jsdom): `src/App.test.jsx` (smoke), `src/pages/Login.test.jsx`, `src/pages/Register.test.jsx`, `src/components/ConfirmProvider.test.jsx`.
+- Frontend: 6 test file / 37 test (Vitest + Testing Library, jsdom): `src/App.test.jsx` (smoke), `src/pages/Login.test.jsx`, `src/pages/Register.test.jsx`, `src/components/ConfirmProvider.test.jsx`, `src/mock/adapter.test.js`, `src/pages/UserOrdering.test.jsx` (debounce, giỏ hàng, checkout, phân trang, lỗi tải/ảnh).
 - `vite.config.js` bật `test.globals = true` để Testing Library tự dọn DOM giữa các test.
 
 ---
