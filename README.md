@@ -378,6 +378,66 @@ git push --force-with-lease
 
 > Dùng `--force-with-lease`, **không dùng `--force`**. Không rebase nhánh của người khác khi chưa thống nhất.
 
+### `git fetch` — Xem thay đổi remote trước khi quyết định
+
+`git fetch` **chỉ tải thông tin nhánh/commit từ remote về máy, KHÔNG gộp vào code local**. Dùng khi muốn kiểm tra remote có gì mới trước khi pull/merge.
+
+```bash
+# Cập nhật toàn bộ remote-tracking branches (origin/*)
+git fetch origin
+
+# Xem danh sách nhánh remote
+git branch -r
+
+# Xem commit mới trên dev chưa có ở local
+git log --oneline origin/dev..dev
+
+# Xem diff giữa local dev và remote dev
+git diff origin/dev..dev
+```
+
+**So sánh nhanh:**
+
+| Lệnh | Hành động | Code local có đổi không? |
+|------|-----------|-------------------------|
+| `git fetch` | Chỉ cập nhật `origin/*` | **Không** |
+| `git pull` | `fetch` + `merge`/`rebase` ngay | **Có** |
+| `git checkout feature/x` (sau fetch) | Tạo local branch từ `origin/feature/x` | **Có** (chuyển nhánh) |
+
+> **Mẹo:** Chạy `git fetch` thường xuyên (vd: đầu buổi sáng, trước khi rebase) để nắm trạng thái remote mà không làm rối working tree.
+
+### Xoá nhánh an toàn sau khi đã merge
+
+Sau khi PR được **squash and merge** vào `dev` (hoặc `main`), xoá nhánh local và remote:
+
+```bash
+# 1. Chuyển về nhánh cơ sở (dev hoặc main)
+git checkout dev
+git pull origin dev
+
+# 2. Xoá nhánh local (chỉ xoá khi đã merge; -d từ chối nếu chưa merge)
+git branch -d feature/cart-checkout
+
+# 3. Xoá nhánh trên remote (GitHub)
+git push origin --delete feature/cart-checkout
+```
+
+**Hoặc gọn hơn:** dùng flag `-d` của `push` (Git 2.37+):
+```bash
+git push origin -d feature/cart-checkout
+```
+
+**Khi nào KHÔNG xoá được với `-d`:**
+- Nhánh chưa được merge → Git bảo vệ bằng cách từ chối. Nếu **chắc chắn** muốn xoá (vd: nhánh bị abandon), dùng `-D` (force delete local) và `push origin --delete` (remote).
+
+**Dọn dẹp remote-tracking branches cũ (optional):**
+```bash
+# Xoá các origin/* không còn tồn tại trên remote
+git fetch -p
+# hoặc
+git remote prune origin
+```
+
 ### Checklist trước khi mở PR
 
 - [ ] Đã pull `dev` mới nhất và rebase/merge vào nhánh của mình.
