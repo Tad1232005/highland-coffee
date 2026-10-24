@@ -267,9 +267,7 @@ async def admin_revenue_analytics(
     start_utc = start_local.astimezone(timezone.utc)
     end_utc = end_local.astimezone(timezone.utc)
     previous_start_utc = previous_start_local.astimezone(timezone.utc)
-    local_completion_date = func.date(
-        func.timezone("Asia/Ho_Chi_Minh", Order.completed_at)
-    )
+    local_completion_date = func.date(func.timezone("Asia/Ho_Chi_Minh", Order.completed_at))
 
     result = await db.execute(
         select(
