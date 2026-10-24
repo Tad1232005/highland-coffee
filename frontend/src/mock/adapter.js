@@ -264,6 +264,27 @@ async function deleteProduct(id) {
   return { message: `Sản phẩm ${id} đã được ẩn khỏi thực đơn.`, is_available: false }
 }
 
+async function deleteProductPermanently(id) {
+  currentAdmin()
+  const productIndex = db.products.findIndex((product) => product.id === id)
+  if (productIndex < 0) throw new ApiError(404, `Không tìm thấy sản phẩm ${id}.`)
+  if (db.products[productIndex].is_available) {
+    throw new ApiError(409, 'Hãy ẩn món trước khi xóa vĩnh viễn.')
+  }
+  const hasOrderHistory = db.orders.some((order) =>
+    order.items.some((item) => item.product_id === id),
+  )
+  if (hasOrderHistory) {
+    throw new ApiError(409, 'Món đã có trong lịch sử đơn hàng. Hãy ẩn món thay vì xoá vĩnh viễn.')
+  }
+  db.products.splice(productIndex, 1)
+  for (const cart of db.carts.values()) {
+    const index = cart.findIndex((item) => item.product_id === id)
+    if (index >= 0) cart.splice(index, 1)
+  }
+  return { message: `Đã xoá vĩnh viễn sản phẩm ${id}.` }
+}
+
 /* ------------------------------- Cart ------------------------------- */
 
 function cartOf(userId) {
@@ -398,6 +419,7 @@ async function createOrder(body) {
     address,
     note: body?.note ? String(body.note).trim() : null,
     created_at: new Date().toISOString(),
+    completed_at: null,
     items,
   }
   db.orders.unshift(order)
@@ -434,6 +456,80 @@ async function listAllOrders(query) {
   return paginate(all, query)
 }
 
+async function getRevenueAnalytics(query) {
+  currentAdmin()
+  if (Boolean(query.start_date) !== Boolean(query.end_date)) {
+    throw new ApiError(400, 'Vui lòng chọn đủ ngày bắt đầu và ngày kết thúc.')
+  }
+  const localDate = (value) => {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Ho_Chi_Minh',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(value)
+    const fields = Object.fromEntries(parts.map((part) => [part.type, part.value]))
+    return `${fields.year}-${fields.month}-${fields.day}`
+  }
+  const shiftDate = (value, offset) => {
+    const [year, month, day] = value.split('-').map(Number)
+    return new Date(Date.UTC(year, month - 1, day + offset)).toISOString().slice(0, 10)
+  }
+  const today = localDate(new Date())
+  const requestedDays = Math.min(30, Math.max(1, Number(query.days ?? 7)))
+  const startDate = query.start_date ?? shiftDate(today, -(requestedDays - 1))
+  const endDate = query.end_date ?? today
+  const days =
+    Math.floor(
+      (Date.parse(`${endDate}T00:00:00Z`) - Date.parse(`${startDate}T00:00:00Z`)) /
+        86400000,
+    ) + 1
+  if (
+    !Number.isInteger(days) ||
+    days < 1 ||
+    days > 366 ||
+    startDate > endDate ||
+    endDate > today
+  ) {
+    throw new ApiError(400, 'Khoảng ngày không hợp lệ (tối đa 366 ngày và không chọn ngày tương lai).')
+  }
+  const dates = Array.from({ length: days }, (_, index) => shiftDate(startDate, index))
+  const previousDates = Array.from({ length: days }, (_, index) => shiftDate(startDate, index - days))
+  const allDates = [...previousDates, ...dates]
+  const revenue = new Map(allDates.map((date) => [date, 0]))
+  const orderCounts = new Map(allDates.map((date) => [date, 0]))
+
+  db.orders.forEach((order) => {
+    if (order.status !== 'completed' || !order.completed_at) return
+    const date = localDate(new Date(order.completed_at))
+    if (!revenue.has(date)) return
+    revenue.set(date, revenue.get(date) + order.total_amount)
+    orderCounts.set(date, orderCounts.get(date) + 1)
+  })
+
+  const totalRevenue = dates.reduce((total, date) => total + revenue.get(date), 0)
+  const completedOrders = dates.reduce((total, date) => total + orderCounts.get(date), 0)
+  const previousRevenue = previousDates.reduce((total, date) => total + revenue.get(date), 0)
+  const previousOrders = previousDates.reduce((total, date) => total + orderCounts.get(date), 0)
+
+  return {
+    days,
+    start_date: startDate,
+    end_date: endDate,
+    items: dates.map((date) => ({ date, revenue: revenue.get(date) })),
+    summary: {
+      revenue: totalRevenue,
+      completed_orders: completedOrders,
+      average_order_value: completedOrders ? Math.round(totalRevenue / completedOrders) : 0,
+      previous_revenue: previousRevenue,
+      previous_completed_orders: previousOrders,
+      revenue_change_percent: previousRevenue
+        ? Math.round(((totalRevenue - previousRevenue) / previousRevenue) * 1000) / 10
+        : null,
+    },
+  }
+}
+
 async function updateOrderStatus(id, body) {
   currentAdmin()
   const order = db.orders.find((o) => o.id === id)
@@ -447,6 +543,7 @@ async function updateOrderStatus(id, body) {
     )
   }
   order.status = next
+  order.completed_at = next === 'completed' ? new Date().toISOString() : null
   return orderWithUser(order)
 }
 
@@ -474,6 +571,11 @@ const routes = [
   { method: 'POST', pattern: /^\/products$/, handler: (_id, body) => createProduct(body) },
   { method: 'GET', pattern: /^\/products\/(\d+)$/, handler: (id) => getProduct(id) },
   { method: 'PUT', pattern: /^\/products\/(\d+)$/, handler: (id, body) => updateProduct(id, body) },
+  {
+    method: 'DELETE',
+    pattern: /^\/products\/(\d+)\/permanent$/,
+    handler: (id) => deleteProductPermanently(id),
+  },
   { method: 'DELETE', pattern: /^\/products\/(\d+)$/, handler: (id) => deleteProduct(id) },
   { method: 'GET', pattern: /^\/cart\/items$/, handler: () => getCart() },
   { method: 'POST', pattern: /^\/cart\/items$/, handler: (_id, body) => addToCart(body) },
@@ -492,6 +594,11 @@ const routes = [
   { method: 'GET', pattern: /^\/orders$/, handler: (_id, body) => listMyOrders(body) },
   { method: 'GET', pattern: /^\/orders\/(\d+)$/, handler: (id) => getOrder(id) },
   { method: 'GET', pattern: /^\/admin\/orders$/, handler: (_id, body) => listAllOrders(body) },
+  {
+    method: 'GET',
+    pattern: /^\/admin\/analytics\/revenue$/,
+    handler: (_id, body) => getRevenueAnalytics(body),
+  },
   {
     method: 'PATCH',
     pattern: /^\/admin\/orders\/(\d+)\/status$/,

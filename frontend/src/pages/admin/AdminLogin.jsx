@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/useAuth'
 import { useToast } from '../../context/useToast'
+import { USE_MOCK } from '../../api/client'
 
 const DEMO_ADMIN = { email: 'admin@highland.vn', password: 'Admin@123456' }
 
@@ -104,16 +105,18 @@ export function AdminLogin() {
           </button>
         </form>
 
-        <div className="admin-login__demo">
-          <button
-            type="button"
-            className="btn btn--outline btn--block"
-            onClick={quickLogin}
-            disabled={pending}
-          >
-            Vào thẳng bằng tài khoản mẫu
-          </button>
-        </div>
+        {USE_MOCK && (
+          <div className="admin-login__demo">
+            <button
+              type="button"
+              className="btn btn--outline btn--block"
+              onClick={quickLogin}
+              disabled={pending}
+            >
+              Vào thẳng bằng tài khoản mẫu
+            </button>
+          </div>
+        )}
 
         <p className="admin-login__back">
           <Link to="/login">Quay lại đăng nhập khách hàng</Link>

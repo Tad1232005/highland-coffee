@@ -292,6 +292,8 @@ const item = (id, productId, quantity) => {
   }
 }
 
+const daysAgo = (days) => new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString()
+
 export const orders = [
   {
     id: 1042,
@@ -302,7 +304,8 @@ export const orders = [
     phone: '0912345678',
     address: '12 Nguyễn Huệ, Quận 1, TP. Hồ Chí Minh',
     note: 'Ít đá, sữa đá dày hơn.',
-    created_at: '2025-04-18T02:24:00Z',
+    created_at: daysAgo(20),
+    completed_at: daysAgo(19),
     items: [item(1, 1, 2), item(2, 15, 1), item(3, 18, 2)],
   },
   {
@@ -314,7 +317,8 @@ export const orders = [
     phone: '0912345678',
     address: '12 Nguyễn Huệ, Quận 1, TP. Hồ Chí Minh',
     note: null,
-    created_at: '2025-04-21T07:41:00Z',
+    created_at: daysAgo(2),
+    completed_at: null,
     items: [item(4, 6, 1), item(5, 8, 1)],
   },
   {
@@ -326,7 +330,8 @@ export const orders = [
     phone: '0912345678',
     address: '212 Điện Biên Phủ, Quận 3, TP. Hồ Chí Minh',
     note: 'Gọi trước khi giao.',
-    created_at: '2025-04-22T03:05:00Z',
+    created_at: daysAgo(1),
+    completed_at: null,
     items: [item(6, 12, 1), item(7, 16, 1), item(8, 17, 1)],
   },
   {
@@ -338,7 +343,8 @@ export const orders = [
     phone: '0912345678',
     address: '45 Lê Lợi, Quận 1, TP. Hồ Chí Minh',
     note: null,
-    created_at: '2025-04-23T08:12:00Z',
+    created_at: daysAgo(0),
+    completed_at: null,
     items: [item(9, 3, 2)],
   },
   {
@@ -350,7 +356,8 @@ export const orders = [
     phone: '0912345678',
     address: '45 Lê Lợi, Quận 1, TP. Hồ Chí Minh',
     note: 'Đặt nhầm, huỷ giúp em.',
-    created_at: '2025-04-17T09:30:00Z',
+    created_at: daysAgo(7),
+    completed_at: null,
     items: [item(10, 13, 1)],
   },
   {
@@ -362,7 +369,8 @@ export const orders = [
     phone: '0912345678',
     address: '88 Lý Tự Trọng, Quận 1, TP. Hồ Chí Minh',
     note: null,
-    created_at: '2025-04-10T01:50:00Z',
+    created_at: daysAgo(5),
+    completed_at: daysAgo(4),
     items: [item(11, 5, 1), item(12, 9, 1), item(13, 11, 1)],
   },
   {
@@ -374,7 +382,8 @@ export const orders = [
     phone: '0912345678',
     address: '88 Lý Tự Trọng, Quận 1, TP. Hồ Chí Minh',
     note: null,
-    created_at: '2025-04-04T04:15:00Z',
+    created_at: daysAgo(4),
+    completed_at: daysAgo(3),
     items: [item(14, 2, 1)],
   },
   {
@@ -386,7 +395,8 @@ export const orders = [
     phone: '0912345678',
     address: '88 Lý Tự Trọng, Quận 1, TP. Hồ Chí Minh',
     note: null,
-    created_at: '2025-03-28T08:55:00Z',
+    created_at: daysAgo(3),
+    completed_at: daysAgo(2),
     items: [item(15, 10, 1), item(16, 14, 1)],
   },
 ]

@@ -99,6 +99,33 @@ export function IconGrid(props) {
   )
 }
 
+export function IconHome(props) {
+  return (
+    <svg {...base} {...props}>
+      <path d="m3.5 10 8.5-7 8.5 7v9a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2v-9Z" />
+      <path d="M9 21v-7h6v7" />
+    </svg>
+  )
+}
+
+export function IconChart(props) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M4 20h16" />
+      <path d="M6 16v-4M12 16V5M18 16V9" />
+      <path d="M4 4v16" />
+    </svg>
+  )
+}
+
+export function IconChevronDown(props) {
+  return (
+    <svg {...base} {...props}>
+      <path d="m6 9 6 6 6-6" />
+    </svg>
+  )
+}
+
 export function IconClock(props) {
   return (
     <svg {...base} {...props}>

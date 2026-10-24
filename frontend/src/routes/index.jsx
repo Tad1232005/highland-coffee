@@ -11,6 +11,8 @@ import { NotFound } from '../pages/NotFound'
 import { ProductDetail } from '../pages/ProductDetail'
 import { Register } from '../pages/Register'
 import { AdminCategories } from '../pages/admin/AdminCategories'
+import { AdminAnalytics } from '../pages/admin/AdminAnalytics'
+import { AdminDashboard } from '../pages/admin/AdminDashboard'
 import { AdminLayout } from '../pages/admin/AdminLayout'
 import { AdminLogin } from '../pages/admin/AdminLogin'
 import { AdminOrders } from '../pages/admin/AdminOrders'
@@ -69,7 +71,9 @@ export function AppRoutes() {
           </RequireAdmin>
         }
       >
-        <Route index element={<Navigate to="/admin/orders" replace />} />
+        <Route index element={<Navigate to="/admin/dashboard" replace />} />
+        <Route path="dashboard" element={<AdminDashboard />} />
+        <Route path="analytics" element={<AdminAnalytics />} />
         <Route path="orders" element={<AdminOrders />} />
         <Route path="products" element={<AdminProducts />} />
         <Route path="categories" element={<AdminCategories />} />

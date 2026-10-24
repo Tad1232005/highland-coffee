@@ -3,11 +3,13 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.api.deps import get_db, require_admin
 from app.models.category import Category
+from app.models.order import OrderItem
 from app.models.product import Product
 from app.schemas.product import (
     ProductCreate,
@@ -222,3 +224,45 @@ async def delete_product(
     db.add(product)
     await db.commit()
     return {"message": f"Product {product_id} has been marked unavailable", "is_available": False}
+
+
+@router.delete("/{product_id}/permanent", status_code=status.HTTP_200_OK)
+async def permanently_delete_product(
+    product_id: int,
+    db: AsyncSession = Depends(get_db),
+    _admin=Depends(require_admin),
+):
+    """Permanently delete a product only when it has no order history."""
+    result = await db.execute(select(Product).where(Product.id == product_id))
+    product = result.scalar_one_or_none()
+    if not product:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Product with ID {product_id} not found",
+        )
+    if product.is_available:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Hide this product before deleting it permanently.",
+        )
+
+    history_result = await db.execute(
+        select(OrderItem.id).where(OrderItem.product_id == product_id).limit(1)
+    )
+    if history_result.scalar_one_or_none() is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This product has order history. Hide it instead of deleting it permanently.",
+        )
+
+    try:
+        await db.delete(product)
+        await db.commit()
+    except IntegrityError as error:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This product is referenced by existing data and cannot be deleted.",
+        ) from error
+
+    return {"message": f"Product {product_id} has been permanently deleted."}

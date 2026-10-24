@@ -22,17 +22,21 @@ export function AdminCategories() {
   const [busyId, setBusyId] = useState(null)
   const [actionError, setActionError] = useState('')
   const [notice, setNotice] = useState('')
+  const [showCreateForm, setShowCreateForm] = useState(false)
+  const [search, setSearch] = useState('')
   const confirm = useConfirm()
   const { notify } = useToast()
 
   const loader = useCallback(async () => {
-    const [categoryList, productList] = await Promise.all([
-      categoriesApi.list(),
-      productsApi.list({ page: 1, size: 100, available_only: false }),
-    ])
+    const categoryList = await categoriesApi.list()
+    const productCounts = await Promise.all(
+      categoryList.map((category) =>
+        productsApi.list({ category_id: category.id, page: 1, size: 1, available_only: false }),
+      ),
+    )
     const counts = {}
-    productList.items.forEach((product) => {
-      counts[product.category_id] = (counts[product.category_id] ?? 0) + 1
+    categoryList.forEach((category, index) => {
+      counts[category.id] = productCounts[index].total
     })
     return { categories: categoryList, counts }
   }, [])
@@ -41,25 +45,36 @@ export function AdminCategories() {
   const items = data?.categories ?? []
   const counts = data?.counts ?? {}
   const error = actionError || loadError
+  const visibleItems = items.filter((category) =>
+    `${category.name} ${category.slug} ${category.description ?? ''}`
+      .toLocaleLowerCase('vi')
+      .includes(search.trim().toLocaleLowerCase('vi')),
+  )
 
   const handleCreate = async (event) => {
     event.preventDefault()
     setActionError('')
     setNotice('')
+    const slug = form.slug.trim() ? slugify(form.slug) : slugify(form.name)
     if (!form.name.trim()) {
       setActionError('Tên danh mục không được trống.')
+      return
+    }
+    if (!slug) {
+      setActionError('Vui lòng nhập tên danh mục hoặc slug hợp lệ.')
       return
     }
     setBusyId('create')
     try {
       const created = await categoriesApi.create({
         name: form.name.trim(),
-        slug: form.slug.trim() || slugify(form.name),
+        slug,
         description: form.description.trim() || null,
       })
       update((current) => ({ ...current, categories: [...current.categories, created] }))
       setForm({ name: '', slug: '', description: '' })
       setNotice(`Đã thêm danh mục “${created.name}”.`)
+      setShowCreateForm(false)
     } catch (requestError) {
       setActionError(requestError.detail ?? 'Không tạo được danh mục.')
     } finally {
@@ -75,13 +90,22 @@ export function AdminCategories() {
   }
 
   const saveEdit = async (category) => {
+    const slug = draft.slug.trim() ? slugify(draft.slug) : slugify(draft.name)
+    if (!draft.name.trim()) {
+      setActionError('Tên danh mục không được để trống.')
+      return
+    }
+    if (!slug) {
+      setActionError('Slug danh mục không hợp lệ.')
+      return
+    }
     setBusyId(category.id)
     setActionError('')
     try {
       const updated = await categoriesApi.update(category.id, {
         name: draft.name.trim(),
-        slug: draft.slug.trim() || slugify(draft.name),
-        description: draft.description.trim() || null,
+        slug,
+        description: draft.description.trim(),
       })
       update((current) => ({
         ...current,
@@ -132,20 +156,103 @@ export function AdminCategories() {
     <section className="admin__panel">
       <header className="admin__panel-head">
         <div>
+          <p className="admin__eyebrow">THỰC ĐƠN</p>
           <h1 className="admin__panel-title">Danh mục</h1>
-          <p className="admin__panel-sub">{items.length} nhóm trên thực đơn</p>
+          <p className="admin__panel-sub">Quản lý nhóm món và theo dõi số sản phẩm trong từng nhóm.</p>
         </div>
+        <button
+          type="button"
+          className="btn btn--primary"
+          aria-expanded={showCreateForm}
+          aria-controls="admin-category-create-form"
+          onClick={() => setShowCreateForm((open) => !open)}
+        >
+          {showCreateForm ? 'Đóng biểu mẫu' : '+ Thêm danh mục'}
+        </button>
       </header>
 
       {error && <p className="notice notice--error">{error}</p>}
       {notice && <p className="notice notice--success">{notice}</p>}
       {loading && <Loading label="Đang tải danh mục" />}
 
-      {!loading && items.length === 0 && (
-        <EmptyState title="Chưa có danh mục" text="Thêm nhóm đầu tiên để gắn món vào." />
+      {showCreateForm && (
+        <form
+          id="admin-category-create-form"
+          className="admin__form admin__form--card"
+          onSubmit={handleCreate}
+          noValidate
+        >
+          <h2 className="admin__form-title">Thêm danh mục</h2>
+          <div className="admin__form-row">
+            <div className="field">
+              <label className="field__label" htmlFor="cat-name">Tên</label>
+              <input
+                id="cat-name"
+                className="field__control"
+                value={form.name}
+                onChange={(event) => {
+                  setForm({ ...form, name: event.target.value })
+                  setActionError('')
+                }}
+                aria-required="true"
+              />
+            </div>
+            <div className="field">
+              <label className="field__label" htmlFor="cat-slug">Slug</label>
+              <input
+                id="cat-slug"
+                className="field__control"
+                value={form.slug}
+                placeholder="tu-dong-tao"
+                onChange={(event) => {
+                  setForm({ ...form, slug: event.target.value })
+                  setActionError('')
+                }}
+              />
+            </div>
+          </div>
+          <div className="field">
+            <label className="field__label" htmlFor="cat-desc">Mô tả</label>
+            <input
+              id="cat-desc"
+              className="field__control"
+              value={form.description}
+              onChange={(event) => setForm({ ...form, description: event.target.value })}
+            />
+          </div>
+          <button type="submit" className="btn btn--primary" disabled={busyId === 'create'}>
+            {busyId === 'create' ? 'Đang lưu' : 'Thêm danh mục'}
+          </button>
+        </form>
       )}
 
       {!loading && items.length > 0 && (
+        <div className="admin__toolbar admin-categories__toolbar">
+          <label className="search admin__search">
+            <span className="visually-hidden">Tìm danh mục</span>
+            <input
+              className="search__input"
+              type="search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Tìm theo tên, slug hoặc mô tả…"
+            />
+          </label>
+          <span className="admin__result-count">
+            {visibleItems.length} / {items.length} danh mục
+          </span>
+        </div>
+      )}
+
+      {!loading && items.length === 0 && (
+        <EmptyState title="Chưa có danh mục" text="Dùng nút “Thêm danh mục” để tạo nhóm đầu tiên." />
+      )}
+
+      {!loading && items.length > 0 && visibleItems.length === 0 && (
+        <EmptyState title="Không tìm thấy danh mục" text="Thử từ khoá khác hoặc xoá nội dung tìm kiếm." />
+      )}
+
+      {!loading && visibleItems.length > 0 && (
         <div className="table-wrap">
           <table className="table">
             <thead>
@@ -153,12 +260,12 @@ export function AdminCategories() {
                 <th>Danh mục</th>
                 <th>Slug</th>
                 <th>Mô tả</th>
-                <th>Sản phẩm</th>
+                <th className="table__center-col">Sản phẩm</th>
                 <th className="table__actions-col">Thao tác</th>
               </tr>
             </thead>
             <tbody>
-              {items.map((category) => {
+              {visibleItems.map((category) => {
                 const editing = editingId === category.id
                 return (
                   <tr key={category.id}>
@@ -200,7 +307,7 @@ export function AdminCategories() {
                         category.description
                       )}
                     </td>
-                    <td className="table__muted">{counts[category.id] ?? 0}</td>
+                    <td className="table__muted table__center-col">{counts[category.id] ?? 0}</td>
                     <td>
                       <div className="row-actions">
                         {editing ? (
@@ -250,49 +357,6 @@ export function AdminCategories() {
         </div>
       )}
 
-      <form className="admin__form" onSubmit={handleCreate}>
-        <h2 className="admin__form-title">Thêm danh mục</h2>
-        <div className="admin__form-row">
-          <div className="field">
-            <label className="field__label" htmlFor="cat-name">
-              Tên
-            </label>
-            <input
-              id="cat-name"
-              className="field__control"
-              value={form.name}
-              onChange={(event) => setForm({ ...form, name: event.target.value })}
-              required
-            />
-          </div>
-          <div className="field">
-            <label className="field__label" htmlFor="cat-slug">
-              Slug
-            </label>
-            <input
-              id="cat-slug"
-              className="field__control"
-              value={form.slug}
-              placeholder="tu-dong-tao"
-              onChange={(event) => setForm({ ...form, slug: event.target.value })}
-            />
-          </div>
-        </div>
-        <div className="field">
-          <label className="field__label" htmlFor="cat-desc">
-            Mô tả
-          </label>
-          <input
-            id="cat-desc"
-            className="field__control"
-            value={form.description}
-            onChange={(event) => setForm({ ...form, description: event.target.value })}
-          />
-        </div>
-        <button type="submit" className="btn btn--primary" disabled={busyId === 'create'}>
-          {busyId === 'create' ? 'Đang lưu' : 'Thêm danh mục'}
-        </button>
-      </form>
     </section>
   )
 }
