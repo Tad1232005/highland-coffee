@@ -1,5 +1,7 @@
 import math
+from datetime import date, datetime, time, timedelta, timezone
 from typing import Optional
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import delete, func, select
@@ -31,6 +33,8 @@ ORDER_TRANSITION_RULES = {
     "cancelled": [],  # Terminal state
 }
 
+BUSINESS_TIMEZONE = ZoneInfo("Asia/Ho_Chi_Minh")
+
 
 def _format_order_response(order: Order) -> OrderResponse:
     """Format SQLAlchemy Order model to Pydantic OrderResponse schema."""
@@ -57,6 +61,7 @@ def _format_order_response(order: Order) -> OrderResponse:
         address=order.address,
         note=order.note,
         created_at=order.created_at,
+        completed_at=order.completed_at,
         items=item_responses,
         user=order.user,
     )
@@ -211,6 +216,128 @@ async def get_order_by_id(
 
 
 # Admin Endpoints
+@router.get("/admin/analytics/revenue")
+async def admin_revenue_analytics(
+    days: int = Query(
+        default=7,
+        ge=1,
+        le=30,
+        description="Number of local calendar days",
+    ),
+    start_date: Optional[date] = Query(default=None),
+    end_date: Optional[date] = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+    _admin: User = Depends(require_admin),
+):
+    """Return completed-order revenue by completion date in the Vietnam timezone."""
+    today = datetime.now(BUSINESS_TIMEZONE).date()
+    if (start_date is None) != (end_date is None):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="start_date and end_date must be provided together.",
+        )
+    if start_date is None:
+        end_date = today
+        start_date = end_date - timedelta(days=days - 1)
+    elif end_date is None or start_date > end_date or end_date > today:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Date range must be valid and cannot end in the future.",
+        )
+
+    days = (end_date - start_date).days + 1
+    if days > 366:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Date range cannot exceed 366 days.",
+        )
+
+    previous_start_date = start_date - timedelta(days=days)
+    start_local = datetime.combine(start_date, time.min, tzinfo=BUSINESS_TIMEZONE)
+    end_local = datetime.combine(
+        end_date + timedelta(days=1),
+        time.min,
+        tzinfo=BUSINESS_TIMEZONE,
+    )
+    previous_start_local = datetime.combine(
+        previous_start_date,
+        time.min,
+        tzinfo=BUSINESS_TIMEZONE,
+    )
+    start_utc = start_local.astimezone(timezone.utc)
+    end_utc = end_local.astimezone(timezone.utc)
+    previous_start_utc = previous_start_local.astimezone(timezone.utc)
+    local_completion_date = func.date(
+        func.timezone("Asia/Ho_Chi_Minh", Order.completed_at)
+    )
+
+    result = await db.execute(
+        select(
+            local_completion_date.label("completion_date"),
+            func.sum(Order.total_amount).label("revenue"),
+            func.count(Order.id).label("order_count"),
+        )
+        .where(
+            Order.status == "completed",
+            Order.completed_at >= start_utc,
+            Order.completed_at < end_utc,
+        )
+        .group_by(local_completion_date)
+        .order_by(local_completion_date)
+    )
+    current_rows = list(result)
+    revenue_by_date = {
+        row.completion_date.isoformat(): int(row.revenue or 0) for row in current_rows
+    }
+    total_revenue = sum(int(row.revenue or 0) for row in current_rows)
+    completed_orders = sum(int(row.order_count) for row in current_rows)
+
+    previous_result = await db.execute(
+        select(
+            func.coalesce(func.sum(Order.total_amount), 0).label("revenue"),
+            func.count(Order.id).label("order_count"),
+        ).where(
+            Order.status == "completed",
+            Order.completed_at >= previous_start_utc,
+            Order.completed_at < start_utc,
+        )
+    )
+    previous_row = previous_result.one()
+    previous_revenue = int(previous_row.revenue or 0)
+    previous_orders = int(previous_row.order_count)
+    revenue_change_percent = (
+        round((total_revenue - previous_revenue) / previous_revenue * 100, 1)
+        if previous_revenue
+        else None
+    )
+    items = [
+        {
+            "date": (start_date + timedelta(days=offset)).isoformat(),
+            "revenue": revenue_by_date.get(
+                (start_date + timedelta(days=offset)).isoformat(),
+                0,
+            ),
+        }
+        for offset in range(days)
+    ]
+    return {
+        "days": days,
+        "start_date": start_date.isoformat(),
+        "end_date": end_date.isoformat(),
+        "items": items,
+        "summary": {
+            "revenue": total_revenue,
+            "completed_orders": completed_orders,
+            "average_order_value": (
+                round(total_revenue / completed_orders) if completed_orders else 0
+            ),
+            "previous_revenue": previous_revenue,
+            "previous_completed_orders": previous_orders,
+            "revenue_change_percent": revenue_change_percent,
+        },
+    }
+
+
 @router.get("/admin/orders", response_model=OrderListResponse)
 async def admin_list_orders(
     status_filter: Optional[str] = Query(default=None, alias="status"),
@@ -291,6 +418,8 @@ async def admin_update_order_status(
         )
 
     order.status = status_update.status
+    if status_update.status == "completed":
+        order.completed_at = datetime.now(timezone.utc)
     db.add(order)
     await db.commit()
     await db.refresh(order)

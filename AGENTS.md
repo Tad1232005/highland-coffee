@@ -207,7 +207,7 @@ HighlandCF/
 | Categories | `GET /categories`, `GET /categories/{id}`, `POST/PUT/DELETE` (admin) |
 | Products | `GET /products` (q, category_id, min/max price, page/size), `GET /products/{id}`, `POST/PUT/DELETE` (admin; DELETE = soft delete) |
 | Cart | `GET/POST /cart/items`, `PATCH/DELETE /cart/items/{id}`, `DELETE /cart/items` (auth) |
-| Orders | `POST/GET /orders`, `GET /orders/{id}`, `GET /admin/orders`, `PATCH /admin/orders/{id}/status` (both list endpoints are paginated: `page`/`size`) |
+| Orders | `POST/GET /orders`, `GET /orders/{id}`, `GET /admin/orders`, `PATCH /admin/orders/{id}/status`, `GET /admin/analytics/revenue?days=7` (both list endpoints are paginated: `page`/`size`; revenue sums completed orders by order date in `Asia/Ho_Chi_Minh`) |
 | Health | `GET /api/health` |
 
 ### Database

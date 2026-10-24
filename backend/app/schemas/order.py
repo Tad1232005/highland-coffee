@@ -35,6 +35,7 @@ class OrderResponse(BaseModel):
     address: str
     note: Optional[str] = None
     created_at: datetime
+    completed_at: Optional[datetime] = None
     items: List[OrderItemResponse]
     user: Optional[UserResponse] = None
 

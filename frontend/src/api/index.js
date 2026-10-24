@@ -23,6 +23,7 @@ export const products = {
   create: (payload) => request('POST', '/products', { body: payload }),
   update: (id, payload) => request('PUT', `/products/${id}`, { body: payload }),
   remove: (id) => request('DELETE', `/products/${id}`),
+  deletePermanently: (id) => request('DELETE', `/products/${id}/permanent`),
 }
 
 export const cart = {
@@ -40,6 +41,7 @@ export const orders = {
 }
 
 export const admin = {
+  getRevenue: (params) => request('GET', '/admin/analytics/revenue', { query: params }),
   listOrders: (params) => request('GET', '/admin/orders', { query: params }),
   updateOrderStatus: (id, status) =>
     request('PATCH', `/admin/orders/${id}/status`, { body: { status } }),
