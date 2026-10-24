@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 /**
  * Tải dữ liệu bất đồng bộ theo một "khoá" (chuỗi đại diện cho tham số truy vấn).
@@ -8,21 +8,26 @@ import { useCallback, useEffect, useState } from 'react'
  *   đồng bộ trong thân effect.
  */
 export function useAsyncData(loader, key) {
-  const [state, setState] = useState({ key: null, data: null, error: '' })
+  const [state, setState] = useState({ key: null, data: null, error: '', errorStatus: null })
+  const version = useRef(0)
 
   useEffect(() => {
     let active = true
+    const requestVersion = ++version.current
     Promise.resolve()
       .then(() => loader())
       .then((data) => {
-        if (active) setState({ key, data, error: '' })
+        if (active && requestVersion === version.current) {
+          setState({ key, data, error: '', errorStatus: null })
+        }
       })
       .catch((error) => {
-        if (active) {
+        if (active && requestVersion === version.current) {
           setState({
             key,
             data: null,
             error: error?.detail ?? 'Không tải được dữ liệu. Thử lại sau.',
+            errorStatus: error?.status ?? null,
           })
         }
       })
@@ -32,16 +37,21 @@ export function useAsyncData(loader, key) {
   }, [loader, key])
 
   const update = useCallback((next) => {
+    // A mutation response supersedes any older read still in flight.
+    version.current += 1
     setState((current) => ({
       ...current,
+      key,
       data: typeof next === 'function' ? next(current.data) : next,
       error: '',
+      errorStatus: null,
     }))
-  }, [])
+  }, [key])
 
   return {
     data: state.key === key ? state.data : null,
     error: state.key === key ? state.error : '',
+    errorStatus: state.key === key ? state.errorStatus : null,
     loading: state.key !== key,
     update,
   }
