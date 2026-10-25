@@ -175,7 +175,7 @@ Nếu muốn xem dữ liệu trực quan qua pgAdmin:
 ```bash
 cd backend
 
-# Chạy toàn bộ 22 test cases
+# Chạy toàn bộ 26 test cases
 pytest -v
 
 # Chạy riêng từng module

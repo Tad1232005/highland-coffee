@@ -48,7 +48,7 @@ async def create_category(
             (Category.slug == category_in.slug) | (Category.name == category_in.name)
         )
     )
-    if existing.scalar_one_or_none():
+    if existing.scalars().first():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Category with this name or slug already exists",
@@ -86,6 +86,14 @@ async def update_category(
         )
 
     if category_in.name is not None:
+        existing_name = await db.execute(
+            select(Category).where(Category.name == category_in.name, Category.id != category_id)
+        )
+        if existing_name.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Name is already used by another category",
+            )
         category.name = category_in.name
     if category_in.slug is not None:
         # Check uniqueness if changed
