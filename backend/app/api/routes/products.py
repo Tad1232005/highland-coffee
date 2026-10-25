@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.api.deps import get_db, require_admin
+from app.core.cache import cached, invalidate_all_caches
 from app.models.category import Category
 from app.models.order import OrderItem
 from app.models.product import Product
@@ -22,6 +23,7 @@ router = APIRouter(prefix="/products", tags=["Products"])
 
 
 @router.get("", response_model=ProductListResponse)
+@cached(ttl=60, key_prefix="products")
 async def list_products(
     q: Optional[str] = Query(
         default=None, description="Search keyword in product name or description"
@@ -89,6 +91,7 @@ async def list_products(
 
 
 @router.get("/{product_id}", response_model=ProductResponse)
+@cached(ttl=60, key_prefix="products")
 async def get_product(product_id: int, db: AsyncSession = Depends(get_db)):
     """Retrieve single product details by ID."""
     result = await db.execute(
@@ -138,6 +141,9 @@ async def create_product(
     db.add(product)
     await db.commit()
     await db.refresh(product)
+
+    # Invalidate product caches
+    invalidate_all_caches()
 
     # Re-fetch with category loaded
     res = await db.execute(
@@ -199,6 +205,9 @@ async def update_product(
     await db.commit()
     await db.refresh(product)
 
+    # Invalidate product caches
+    invalidate_all_caches()
+
     res = await db.execute(
         select(Product).options(selectinload(Product.category)).where(Product.id == product.id)
     )
@@ -223,6 +232,10 @@ async def delete_product(
     product.is_available = False
     db.add(product)
     await db.commit()
+
+    # Invalidate product caches
+    invalidate_all_caches()
+
     return {"message": f"Product {product_id} has been marked unavailable", "is_available": False}
 
 
@@ -264,5 +277,8 @@ async def permanently_delete_product(
             status_code=status.HTTP_409_CONFLICT,
             detail="This product is referenced by existing data and cannot be deleted.",
         ) from error
+
+    # Invalidate product caches
+    invalidate_all_caches()
 
     return {"message": f"Product {product_id} has been permanently deleted."}

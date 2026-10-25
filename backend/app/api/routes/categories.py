@@ -6,6 +6,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db, require_admin
+from app.core.cache import cached, invalidate_all_caches
 from app.models.category import Category
 from app.schemas.category import CategoryCreate, CategoryResponse, CategoryUpdate
 
@@ -13,6 +14,7 @@ router = APIRouter(prefix="/categories", tags=["Categories"])
 
 
 @router.get("", response_model=List[CategoryResponse])
+@cached(ttl=300, key_prefix="categories")
 async def list_categories(db: AsyncSession = Depends(get_db)):
     """List all beverage and food categories."""
     result = await db.execute(select(Category).order_by(Category.id))
@@ -20,6 +22,7 @@ async def list_categories(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/{category_id}", response_model=CategoryResponse)
+@cached(ttl=300, key_prefix="categories")
 async def get_category(category_id: int, db: AsyncSession = Depends(get_db)):
     """Get single category by ID."""
     result = await db.execute(select(Category).where(Category.id == category_id))
@@ -59,6 +62,10 @@ async def create_category(
     db.add(category)
     await db.commit()
     await db.refresh(category)
+
+    # Invalidate category caches
+    invalidate_all_caches()
+
     return category
 
 
@@ -97,6 +104,10 @@ async def update_category(
     db.add(category)
     await db.commit()
     await db.refresh(category)
+
+    # Invalidate category caches
+    invalidate_all_caches()
+
     return category
 
 
@@ -132,4 +143,8 @@ async def delete_category(
                 "Move or delete its products before deleting the category."
             ),
         )
+
+    # Invalidate category caches
+    invalidate_all_caches()
+
     return None
