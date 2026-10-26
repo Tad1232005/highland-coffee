@@ -161,6 +161,34 @@ export function IconLogout(props) {
   )
 }
 
+export function IconMenu(props) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M4 7h16M4 12h16M4 17h16" />
+    </svg>
+  )
+}
+
+export function IconPanelLeft(props) {
+  return (
+    <svg {...base} {...props}>
+      <rect x="3.4" y="4.4" width="17.2" height="15.2" rx="2.2" />
+      <path d="M9.8 4.4v15.2" />
+    </svg>
+  )
+}
+
+export function IconStore(props) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M4.4 9.5 6 4.8a1.6 1.6 0 0 1 1.5-1.1h9a1.6 1.6 0 0 1 1.5 1.1l1.6 4.7" />
+      <path d="M4.4 9.5h15.2" />
+      <path d="M5.6 9.5V19a1.6 1.6 0 0 0 1.6 1.6h9.6A1.6 1.6 0 0 0 18.4 19V9.5" />
+      <path d="M9.6 20.6v-5.2h4.8v5.2" />
+    </svg>
+  )
+}
+
 export function IconX(props) {
   return (
     <svg {...base} {...props}>
