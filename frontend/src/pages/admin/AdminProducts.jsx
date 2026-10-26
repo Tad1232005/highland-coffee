@@ -1,10 +1,11 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { categories as categoriesApi, products as productsApi } from '../../api'
 import { EmptyState, Loading } from '../../components'
+import { IconPlus, IconSearch, IconX } from '../../components/icons'
 import { useConfirm } from '../../context/useConfirm'
 import { useToast } from '../../context/useToast'
 import { useAsyncData } from '../../hooks/useAsyncData'
-import { formatPrice } from '../../utils/format'
+import { formatPrice, normalizeSearch, slugify } from '../../utils/format'
 
 const EMPTY_FORM = {
   category_id: '',
@@ -16,26 +17,17 @@ const EMPTY_FORM = {
   is_available: true,
 }
 
-function slugify(value) {
-  return value
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/đ/g, 'd')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)/g, '')
-}
-
 export function AdminProducts() {
   const [form, setForm] = useState(EMPTY_FORM)
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState(null)
-  const [busyId, setBusyId] = useState(null)
+  const [busy, setBusy] = useState(null)
   const [actionError, setActionError] = useState('')
   const [search, setSearch] = useState('')
   const [availability, setAvailability] = useState('all')
   const confirm = useConfirm()
   const { notify } = useToast()
+  const formRef = useRef(null)
 
   const categoryLoader = useCallback(() => categoriesApi.list(), [])
   const { data: categories } = useAsyncData(categoryLoader, 'admin-categories')
@@ -47,12 +39,19 @@ export function AdminProducts() {
   const result = data ?? { items: [], total: 0 }
   const error = actionError || loadError
   const categoryName = (id) => categories?.find((item) => item.id === id)?.name ?? '—'
+  const keyword = normalizeSearch(search.trim())
   const visibleItems = result.items.filter((product) => {
-    const matchesSearch = `${product.name} ${product.slug}`.toLowerCase().includes(search.trim().toLowerCase())
+    const matchesSearch = normalizeSearch(`${product.name} ${product.slug}`).includes(keyword)
     const matchesAvailability =
       availability === 'all' || product.is_available === (availability === 'available')
     return matchesSearch && matchesAvailability
   })
+
+  // Mở biểu mẫu sửa ở đầu trang: cuộn tới để không phải tự tìm lại.
+  useEffect(() => {
+    if (editingId === null) return
+    formRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' })
+  }, [editingId])
 
   const updateField = (field) => (event) => {
     const value = field === 'is_available' ? event.target.checked : event.target.value
@@ -93,7 +92,8 @@ export function AdminProducts() {
       setActionError('Vui lòng chọn danh mục.')
       return
     }
-    if (!form.slug.trim() && !slugify(form.name)) {
+    const slug = slugify(form.slug.trim() || form.name)
+    if (!slug) {
       setActionError('Tên món chưa tạo được slug hợp lệ.')
       return
     }
@@ -105,14 +105,14 @@ export function AdminProducts() {
     const payload = {
       category_id: Number(form.category_id),
       name: form.name.trim(),
-      slug: form.slug.trim() || slugify(form.name),
-      description: form.description.trim(),
-      image_url: form.image_url.trim(),
+      slug,
+      description: form.description.trim() || null,
+      image_url: form.image_url.trim() || null,
       price,
       is_available: form.is_available,
     }
     const id = editingId
-    setBusyId(id ?? 'create')
+    setBusy({ id: id ?? 'create', action: 'save' })
     setActionError('')
     try {
       if (id) {
@@ -123,11 +123,7 @@ export function AdminProducts() {
         }))
         notify(`Đã cập nhật món “${updated.name}”.`, { type: 'success' })
       } else {
-        const created = await productsApi.create({
-          ...payload,
-          description: payload.description || null,
-          image_url: payload.image_url || null,
-        })
+        const created = await productsApi.create(payload)
         update((current) => ({
           ...current,
           items: [created, ...current.items],
@@ -139,7 +135,7 @@ export function AdminProducts() {
     } catch (requestError) {
       setActionError(requestError.detail ?? 'Không lưu được sản phẩm.')
     } finally {
-      setBusyId(null)
+      setBusy(null)
     }
   }
 
@@ -155,7 +151,7 @@ export function AdminProducts() {
       if (!confirmed) return
     }
 
-    setBusyId(product.id)
+    setBusy({ id: product.id, action: 'toggle' })
     setActionError('')
     try {
       if (product.is_available) {
@@ -177,22 +173,23 @@ export function AdminProducts() {
       setActionError(message)
       notify(message, { type: 'error' })
     } finally {
-      setBusyId(null)
+      setBusy(null)
     }
   }
 
   const permanentlyDeleteProduct = async (product) => {
     const confirmed = await confirm({
-      title: `Xóa món “${product.name}”?`,
+      title: `Xoá món “${product.name}”?`,
       message:
-        'Món đã ẩn sẽ bị xóa vĩnh viễn và không thể khôi phục. Món có lịch sử đơn hàng sẽ được giữ lại để bảo toàn dữ liệu.',
-      confirmText: 'Xóa vĩnh viễn',
+        'Món đã ẩn sẽ bị xoá vĩnh viễn và không thể khôi phục. ' +
+        'Món có lịch sử đơn hàng sẽ được giữ lại để bảo toàn dữ liệu.',
+      confirmText: 'Xoá vĩnh viễn',
       cancelText: 'Giữ lại',
       danger: true,
     })
     if (!confirmed) return
 
-    setBusyId(product.id)
+    setBusy({ id: product.id, action: 'delete' })
     setActionError('')
     try {
       await productsApi.deletePermanently(product.id)
@@ -201,21 +198,55 @@ export function AdminProducts() {
         items: current.items.filter((item) => item.id !== product.id),
         total: Math.max(0, current.total - 1),
       }))
-      notify(`Đã xóa vĩnh viễn món “${product.name}”.`, { type: 'success' })
+      notify(`Đã xoá vĩnh viễn món “${product.name}”.`, { type: 'success' })
     } catch (requestError) {
-      const message = requestError.detail ?? 'Không xóa được món.'
+      const message = requestError.detail ?? 'Không xoá được món.'
       setActionError(message)
       notify(message, { type: 'error' })
     } finally {
-      setBusyId(null)
+      setBusy(null)
     }
   }
+
+  const renderActions = (product, className) => (
+    <div className={className}>
+      <button
+        type="button"
+        className="btn btn--sm btn--outline"
+        onClick={() => startEdit(product)}
+        aria-label={`Sửa món ${product.name}`}
+      >
+        Sửa
+      </button>
+      <button
+        type="button"
+        className="btn btn--sm btn--outline"
+        onClick={() => toggleAvailability(product)}
+        disabled={busy?.id === product.id}
+        aria-label={`${product.is_available ? 'Ẩn' : 'Mở bán'} món ${product.name}`}
+      >
+        {busy?.id === product.id && busy.action === 'toggle'
+          ? 'Đang lưu…'
+          : product.is_available ? 'Ẩn món' : 'Mở bán'}
+      </button>
+      {!product.is_available && (
+        <button
+          type="button"
+          className="btn btn--sm btn--danger"
+          onClick={() => permanentlyDeleteProduct(product)}
+          disabled={busy?.id === product.id}
+          aria-label={`Xoá vĩnh viễn món ${product.name}`}
+        >
+          {busy?.id === product.id && busy.action === 'delete' ? 'Đang xoá…' : 'Xoá món'}
+        </button>
+      )}
+    </div>
+  )
 
   return (
     <section className="admin__panel">
       <header className="admin__panel-head">
         <div>
-          <p className="admin__eyebrow">THỰC ĐƠN</p>
           <h1 className="admin__panel-title">Sản phẩm</h1>
           <p className="admin__panel-sub">{result.total} món trong thực đơn</p>
         </div>
@@ -224,80 +255,185 @@ export function AdminProducts() {
           className="btn btn--primary"
           aria-expanded={showForm}
           aria-controls="admin-product-form"
-          disabled={editingId !== null}
-          onClick={() => setShowForm((open) => !open)}
+          onClick={() => (editingId !== null ? cancelEdit() : setShowForm((open) => !open))}
         >
-          {showForm ? 'Đóng biểu mẫu' : '+ Thêm món'}
+          {showForm ? <IconX width={16} height={16} /> : <IconPlus width={16} height={16} />}
+          {showForm ? 'Đóng biểu mẫu' : 'Thêm món'}
         </button>
       </header>
 
-      {error && <p className="notice notice--error" role="alert">{error}</p>}
+      {error && (
+        <p className="notice notice--error" role="alert">
+          {error}
+        </p>
+      )}
 
       {showForm && (
-      <form id="admin-product-form" className="admin__form admin__form--card" onSubmit={saveProduct} noValidate>
-        <div className="admin__form-head">
-          <div>
-            <h2 className="admin__form-title">{editingId ? 'Cập nhật món' : 'Thêm món mới'}</h2>
-            <p className="admin__panel-sub">Thông tin này sẽ hiển thị trên thực đơn của khách.</p>
+        <form
+          id="admin-product-form"
+          ref={formRef}
+          className="admin__form admin__form--card"
+          onSubmit={saveProduct}
+          noValidate
+        >
+          <div className="admin__form-head">
+            <div>
+              <h2 className="admin__form-title">
+                {editingId ? 'Cập nhật món' : 'Thêm món mới'}
+              </h2>
+              <p className="admin__panel-sub">
+                Thông tin này sẽ hiển thị trên thực đơn của khách.
+              </p>
+            </div>
           </div>
-          {editingId && (
-            <button type="button" className="btn btn--outline btn--sm" onClick={cancelEdit}>
-              Huỷ chỉnh sửa
+
+          <div className="admin__form-grid">
+            <div className="field">
+              <label className="field__label" htmlFor="product-name">
+                Tên món
+              </label>
+              <input
+                id="product-name"
+                className="field__control"
+                value={form.name}
+                onChange={updateField('name')}
+                aria-required="true"
+              />
+            </div>
+            <div className="field">
+              <label className="field__label" htmlFor="product-category">
+                Danh mục
+              </label>
+              <select
+                id="product-category"
+                className="field__control"
+                value={form.category_id}
+                onChange={updateField('category_id')}
+                aria-required="true"
+              >
+                <option value="">Chọn danh mục</option>
+                {(categories ?? []).map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="field">
+              <label className="field__label" htmlFor="product-slug">
+                Slug
+              </label>
+              <input
+                id="product-slug"
+                className="field__control"
+                value={form.slug}
+                onChange={updateField('slug')}
+                placeholder="Tự tạo từ tên món"
+              />
+              <span className="field__hint">Để trống để tự tạo slug từ tên món.</span>
+            </div>
+            <div className="field">
+              <label className="field__label" htmlFor="product-price">
+                Giá (VND)
+              </label>
+              <input
+                id="product-price"
+                className="field__control"
+                type="number"
+                min="0"
+                step="1000"
+                value={form.price}
+                onChange={updateField('price')}
+                aria-required="true"
+              />
+            </div>
+            <div className="field admin__form-span">
+              <label className="field__label" htmlFor="product-image">
+                Đường dẫn ảnh
+              </label>
+              <input
+                id="product-image"
+                className="field__control"
+                type="url"
+                value={form.image_url}
+                onChange={updateField('image_url')}
+                placeholder="https://…"
+              />
+            </div>
+            <div className="field admin__form-span">
+              <label className="field__label" htmlFor="product-description">
+                Mô tả
+              </label>
+              <textarea
+                id="product-description"
+                className="field__control"
+                rows="3"
+                value={form.description}
+                onChange={updateField('description')}
+              />
+            </div>
+          </div>
+
+          <label className="admin-check">
+            <input
+              type="checkbox"
+              checked={form.is_available}
+              onChange={updateField('is_available')}
+            />
+            <span>Mở bán ngay sau khi lưu</span>
+          </label>
+          <div className="admin__form-actions">
+            {editingId !== null && (
+              <button type="button" className="btn btn--outline" onClick={cancelEdit}>
+                Huỷ chỉnh sửa
+              </button>
+            )}
+            <button
+              type="submit"
+              className="btn btn--primary"
+              disabled={busy !== null || !categories?.length}
+            >
+              {busy?.action === 'save'
+                ? 'Đang lưu…'
+                : editingId
+                  ? 'Lưu thay đổi'
+                  : 'Thêm sản phẩm'}
             </button>
-          )}
-        </div>
-
-        <div className="admin__form-grid">
-          <div className="field">
-            <label className="field__label" htmlFor="product-name">Tên món</label>
-            <input id="product-name" className="field__control" value={form.name} onChange={updateField('name')} aria-required="true" />
           </div>
-          <div className="field">
-            <label className="field__label" htmlFor="product-category">Danh mục</label>
-            <select id="product-category" className="field__control" value={form.category_id} onChange={updateField('category_id')} aria-required="true">
-              <option value="">Chọn danh mục</option>
-              {(categories ?? []).map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
-            </select>
-          </div>
-          <div className="field">
-            <label className="field__label" htmlFor="product-slug">Slug</label>
-            <input id="product-slug" className="field__control" value={form.slug} onChange={updateField('slug')} placeholder="Tự tạo từ tên món" />
-            <span className="field__hint">Để trống để tự tạo slug từ tên món.</span>
-          </div>
-          <div className="field">
-            <label className="field__label" htmlFor="product-price">Giá (VND)</label>
-            <input id="product-price" className="field__control" type="number" min="0" step="1000" value={form.price} onChange={updateField('price')} aria-required="true" />
-          </div>
-          <div className="field admin__form-span">
-            <label className="field__label" htmlFor="product-image">Đường dẫn ảnh</label>
-            <input id="product-image" className="field__control" type="url" value={form.image_url} onChange={updateField('image_url')} placeholder="https://…" />
-          </div>
-          <div className="field admin__form-span">
-            <label className="field__label" htmlFor="product-description">Mô tả</label>
-            <textarea id="product-description" className="field__control" rows="3" value={form.description} onChange={updateField('description')} />
-          </div>
-        </div>
-
-        <label className="admin-check">
-          <input type="checkbox" checked={form.is_available} onChange={updateField('is_available')} />
-          <span>Mở bán ngay sau khi lưu</span>
-        </label>
-        <div className="admin__form-actions">
-          <button type="submit" className="btn btn--primary" disabled={busyId !== null || !categories?.length}>
-            {busyId === 'create' ? 'Đang thêm…' : editingId ? 'Lưu thay đổi' : 'Thêm sản phẩm'}
-          </button>
-        </div>
-      </form>
+        </form>
       )}
 
       <div className="admin__toolbar">
-        <label className="search admin__search">
+        <label className="search search--with-icon admin__search">
+          <span className="search__icon">
+            <IconSearch width={16} height={16} />
+          </span>
           <span className="visually-hidden">Tìm sản phẩm</span>
-          <input className="search__input" type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Tìm theo tên hoặc slug…" />
+          <input
+            className="search__input"
+            type="search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Tìm theo tên hoặc slug…"
+          />
+          {search && (
+            <button
+              type="button"
+              className="search__clear"
+              onClick={() => setSearch('')}
+              aria-label="Xoá từ khoá tìm kiếm"
+            >
+              <IconX width={14} height={14} />
+            </button>
+          )}
         </label>
         <label className="admin__select-wrap">
           <span className="visually-hidden">Lọc trạng thái sản phẩm</span>
-          <select className="field__control" value={availability} onChange={(event) => setAvailability(event.target.value)}>
+          <select
+            className="field__control"
+            value={availability}
+            onChange={(event) => setAvailability(event.target.value)}
+          >
             <option value="all">Tất cả trạng thái</option>
             <option value="available">Đang bán</option>
             <option value="hidden">Đã ẩn</option>
@@ -308,45 +444,89 @@ export function AdminProducts() {
 
       {loading && <Loading label="Đang tải sản phẩm" />}
       {!loading && visibleItems.length === 0 && (
-        <EmptyState title={result.items.length ? 'Không tìm thấy món phù hợp' : 'Chưa có món nào'} text={result.items.length ? 'Thử đổi từ khoá hoặc bộ lọc trạng thái.' : 'Dùng nút “+ Thêm món” để tạo món đầu tiên.'} />
+        <EmptyState
+          title={result.items.length ? 'Không tìm thấy món phù hợp' : 'Chưa có món nào'}
+          text={
+            result.items.length
+              ? 'Thử đổi từ khoá hoặc bộ lọc trạng thái.'
+              : 'Dùng nút “Thêm món” để tạo món đầu tiên.'
+          }
+        />
       )}
       {!loading && visibleItems.length > 0 && (
-        <div className="table-wrap">
-          <table className="table">
-            <thead><tr><th>Món</th><th>Danh mục</th><th>Giá</th><th>Trạng thái</th><th className="table__actions-col">Thao tác</th></tr></thead>
-            <tbody>
-              {visibleItems.map((product) => (
-                <tr key={product.id}>
-                  <td>
-                    <div className="cell-product">
-                      <img src={product.image_url || '/images/highland-brew.jpg'} alt="" width="48" height="48" loading="lazy" />
-                      <span><strong className="table__strong">{product.name}</strong><small className="admin__product-slug">{product.slug}</small></span>
-                    </div>
-                  </td>
-                  <td className="table__muted">{categoryName(product.category_id)}</td>
-                  <td><span className="table__strong">{formatPrice(product.price)}</span></td>
-                  <td><span className={`badge ${product.is_available ? 'badge--ok' : 'badge--muted'}`}>{product.is_available ? 'Đang bán' : 'Đã ẩn'}</span></td>
-                  <td><div className="row-actions">
-                    <button type="button" className="btn btn--sm btn--outline" onClick={() => startEdit(product)}>Sửa</button>
-                    <button type="button" className="btn btn--sm btn--outline" onClick={() => toggleAvailability(product)} disabled={busyId === product.id}>
-                      {busyId === product.id ? 'Đang lưu…' : product.is_available ? 'Ẩn món' : 'Mở bán'}
-                    </button>
-                    {!product.is_available && (
-                      <button
-                        type="button"
-                        className="btn btn--sm btn--danger"
-                        onClick={() => permanentlyDeleteProduct(product)}
-                        disabled={busyId === product.id}
-                      >
-                        {busyId === product.id ? 'Đang xóa…' : 'Xóa món'}
-                      </button>
-                    )}
-                  </div></td>
+        <>
+          <div className="table-wrap admin-products__desktop">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Món</th>
+                  <th>Danh mục</th>
+                  <th>Giá</th>
+                  <th>Trạng thái</th>
+                  <th className="table__actions-col">Thao tác</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {visibleItems.map((product) => (
+                  <tr key={product.id}>
+                    <td>
+                      <div className="cell-product">
+                        <img
+                          src={product.image_url || '/images/highland-brew.jpg'}
+                          alt=""
+                          width="48"
+                          height="48"
+                          loading="lazy"
+                        />
+                        <span>
+                          <strong className="table__strong">{product.name}</strong>
+                          <small className="admin__product-slug">{product.slug}</small>
+                        </span>
+                      </div>
+                    </td>
+                    <td className="table__muted">{categoryName(product.category_id)}</td>
+                    <td>
+                      <span className="table__strong">{formatPrice(product.price)}</span>
+                    </td>
+                    <td>
+                      <span className={`badge ${product.is_available ? 'badge--ok' : 'badge--muted'}`}>
+                        {product.is_available ? 'Đang bán' : 'Đã ẩn'}
+                      </span>
+                    </td>
+                    <td>{renderActions(product, 'row-actions')}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="admin-products__mobile">
+            {visibleItems.map((product) => (
+              <article className="admin-product-card" key={product.id}>
+                <div className="admin-product-card__head">
+                  <img
+                    src={product.image_url || '/images/highland-brew.jpg'}
+                    alt=""
+                    width="48"
+                    height="48"
+                    loading="lazy"
+                  />
+                  <strong className="admin-product-card__name">{product.name}</strong>
+                  <span className={`badge ${product.is_available ? 'badge--ok' : 'badge--muted'}`}>
+                    {product.is_available ? 'Đang bán' : 'Đã ẩn'}
+                  </span>
+                  <span className="admin-product-card__meta">
+                    <span>{categoryName(product.category_id)}</span>
+                    <span className="admin-product-card__price">
+                      {formatPrice(product.price)}
+                    </span>
+                  </span>
+                </div>
+                {renderActions(product, 'admin-product-card__actions')}
+              </article>
+            ))}
+          </div>
+        </>
       )}
     </section>
   )

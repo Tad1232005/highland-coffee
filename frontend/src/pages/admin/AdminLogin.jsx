@@ -3,15 +3,17 @@ import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/useAuth'
 import { useToast } from '../../context/useToast'
 import { USE_MOCK } from '../../api/client'
+import { validateLogin } from '../../utils/validation'
 
 const DEMO_ADMIN = { email: 'admin@highland.vn', password: 'Admin@123456' }
 
 export function AdminLogin() {
-  const { user, login } = useAuth()
+  const { user, login, logout } = useAuth()
   const { notify } = useToast()
   const navigate = useNavigate()
   const [form, setForm] = useState({ email: '', password: '' })
-  const [error, setError] = useState('')
+  const [errors, setErrors] = useState({})
+  const [formError, setFormError] = useState('')
   const [pending, setPending] = useState(false)
 
   if (user) {
@@ -21,56 +23,63 @@ export function AdminLogin() {
   const update = (field) => (event) => {
     const value = event.target.value
     setForm((current) => ({ ...current, [field]: value }))
+    setErrors((current) => ({ ...current, [field]: undefined }))
   }
 
   const handleSubmit = async (event) => {
     event.preventDefault()
-    setError('')
+    const found = validateLogin(form)
+    setErrors(found)
+    setFormError('')
+    if (Object.keys(found).length > 0) return
+
     setPending(true)
     try {
       const account = await login(form)
       if (account.role !== 'admin') {
-        setError('Tài khoản này không có quyền quản trị.')
+        // Không giữ phiên của tài khoản khách: trang này chỉ dành cho quản trị.
+        logout()
+        setFormError('Tài khoản này không có quyền quản trị. Dùng trang đăng nhập khách hàng.')
         return
       }
       notify('Đã vào khu vực quản trị.', { type: 'success', title: 'Xin chào' })
       navigate('/admin', { replace: true })
     } catch (requestError) {
-      setError(requestError.detail ?? 'Không đăng nhập được khu vực quản trị.')
+      setFormError(requestError.detail ?? 'Đăng nhập không thành công. Kiểm tra lại thông tin.')
     } finally {
       setPending(false)
     }
   }
 
-  const quickLogin = async () => {
-    setError('')
-    setPending(true)
-    try {
-      await login(DEMO_ADMIN)
-      notify('Đã vào khu vực quản trị.', { type: 'success', title: 'Xin chào' })
-      navigate('/admin', { replace: true })
-    } catch (requestError) {
-      setError(requestError.detail ?? 'Không mở được khu vực quản trị.')
-    } finally {
-      setPending(false)
-    }
+  const fillDemo = () => {
+    setForm({ ...DEMO_ADMIN })
+    setErrors({})
+    setFormError('')
   }
 
   return (
-    <section className="admin-login">
-      <div className="admin-login__panel">
-        <p className="admin-login__brand">Highlands Coffee</p>
-        <h1 className="admin-login__title">Khu vực quản trị</h1>
-        <p className="admin-login__lead">
+    <section className="auth auth--standalone">
+      <div className="auth__card">
+        <p className="brand auth__brand">
+          <span className="brand__mark">Highlands</span>
+          <span>Coffee</span>
+        </p>
+
+        <h1 className="auth__title">Khu vực quản trị</h1>
+        <p className="auth__lead">
           Đăng nhập bằng tài khoản quản trị để xử lý đơn hàng và cập nhật thực đơn.
         </p>
 
-        {error && <p className="notice notice--error">{error}</p>}
+        {formError && (
+          <p className="notice notice--error" role="alert">
+            {formError}
+          </p>
+        )}
 
-        <form className="admin-login__form" onSubmit={handleSubmit} noValidate>
+        <form className="auth__form" onSubmit={handleSubmit} noValidate>
           <div className="field">
             <label className="field__label" htmlFor="admin-email">
-              Email quản trị
+              Email
             </label>
             <input
               id="admin-email"
@@ -80,8 +89,10 @@ export function AdminLogin() {
               placeholder="admin@highland.vn"
               value={form.email}
               onChange={update('email')}
+              aria-invalid={Boolean(errors.email)}
               aria-required="true"
             />
+            {errors.email && <p className="field__error">{errors.email}</p>}
           </div>
 
           <div className="field">
@@ -96,31 +107,31 @@ export function AdminLogin() {
               placeholder="Nhập mật khẩu"
               value={form.password}
               onChange={update('password')}
+              aria-invalid={Boolean(errors.password)}
               aria-required="true"
             />
+            {errors.password && <p className="field__error">{errors.password}</p>}
           </div>
 
           <button type="submit" className="btn btn--primary btn--block" disabled={pending}>
-            {pending ? 'Đang kiểm tra…' : 'Đăng nhập quản trị'}
+            {pending ? 'Đang kiểm tra…' : 'Đăng nhập'}
           </button>
         </form>
 
-        {USE_MOCK && (
-          <div className="admin-login__demo">
-            <button
-              type="button"
-              className="btn btn--outline btn--block"
-              onClick={quickLogin}
-              disabled={pending}
-            >
-              Vào thẳng bằng tài khoản mẫu
-            </button>
-          </div>
-        )}
-
-        <p className="admin-login__back">
+        <p className="auth__alt auth__alt--muted">
           <Link to="/login">Quay lại đăng nhập khách hàng</Link>
         </p>
+
+        {USE_MOCK && (
+          <div className="auth__demo">
+            <p className="auth__demo-title">Tài khoản demo</p>
+            <div className="auth__demo-row">
+              <button type="button" className="demo-chip" onClick={fillDemo}>
+                Quản trị
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </section>
   )
