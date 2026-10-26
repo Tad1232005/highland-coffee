@@ -10,19 +10,19 @@ from sqlalchemy.orm import selectinload
 
 from app.api.deps import get_current_user, get_db, require_admin
 from app.models.cart import CartItem
-from app.models.order import Order, OrderItem
+from app.models.order import ORDER_STATUSES, Order, OrderItem
 from app.models.user import User
 from app.schemas.order import (
     OrderCreate,
-    OrderItemResponse,
     OrderListResponse,
     OrderResponse,
     OrderStatusUpdate,
+    RevenueAnalyticsResponse,
 )
 
 router = APIRouter(tags=["Orders"])
 
-VALID_ORDER_STATUSES = ["pending", "confirmed", "preparing", "completed", "cancelled"]
+VALID_ORDER_STATUSES = list(ORDER_STATUSES)
 
 # Allowed transitions from current status to next status
 ORDER_TRANSITION_RULES = {
@@ -37,34 +37,8 @@ BUSINESS_TIMEZONE = ZoneInfo("Asia/Ho_Chi_Minh")
 
 
 def _format_order_response(order: Order) -> OrderResponse:
-    """Format SQLAlchemy Order model to Pydantic OrderResponse schema."""
-    item_responses = []
-    for it in order.items:
-        subtotal = it.unit_price * it.quantity
-        item_responses.append(
-            OrderItemResponse(
-                id=it.id,
-                product_id=it.product_id,
-                product_name=it.product_name,
-                unit_price=it.unit_price,
-                quantity=it.quantity,
-                subtotal=subtotal,
-            )
-        )
-    return OrderResponse(
-        id=order.id,
-        user_id=order.user_id,
-        status=order.status,
-        total_amount=order.total_amount,
-        receiver_name=order.receiver_name,
-        phone=order.phone,
-        address=order.address,
-        note=order.note,
-        created_at=order.created_at,
-        completed_at=order.completed_at,
-        items=item_responses,
-        user=order.user,
-    )
+    """Serialise an Order (with items and user eager-loaded) for the API."""
+    return OrderResponse.model_validate(order)
 
 
 @router.post("/orders", response_model=OrderResponse, status_code=status.HTTP_201_CREATED)
@@ -183,7 +157,7 @@ async def get_my_orders(
         total=total,
         page=page,
         size=size,
-        total_pages=math.ceil(total / size) if size else 0,
+        total_pages=math.ceil(total / size),
     )
 
 
@@ -216,7 +190,7 @@ async def get_order_by_id(
 
 
 # Admin Endpoints
-@router.get("/admin/analytics/revenue")
+@router.get("/admin/analytics/revenue", response_model=RevenueAnalyticsResponse)
 async def admin_revenue_analytics(
     days: int = Query(
         default=7,
@@ -374,7 +348,7 @@ async def admin_list_orders(
         total=total,
         page=page,
         size=size,
-        total_pages=math.ceil(total / size) if size else 0,
+        total_pages=math.ceil(total / size),
     )
 
 

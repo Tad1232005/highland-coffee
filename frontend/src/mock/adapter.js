@@ -139,6 +139,9 @@ async function createCategory(body) {
   if (db.categories.some((c) => c.slug === slug)) {
     throw new ApiError(400, `Slug '${slug}' đã tồn tại.`)
   }
+  if (db.categories.some((c) => c.name === name)) {
+    throw new ApiError(400, `Tên nhóm '${name}' đã tồn tại.`)
+  }
   const category = {
     id: nextId('category'),
     name,
@@ -153,8 +156,20 @@ async function updateCategory(id, body) {
   currentAdmin()
   const category = db.categories.find((c) => c.id === id)
   if (!category) throw new ApiError(404, `Không tìm thấy nhóm ${id}.`)
-  if (body?.name) category.name = String(body.name).trim()
-  if (body?.slug) category.slug = String(body.slug).trim()
+  if (body?.name) {
+    const newName = String(body.name).trim()
+    if (db.categories.some((c) => c.id !== id && c.name === newName)) {
+      throw new ApiError(400, `Tên nhóm '${newName}' đã tồn tại.`)
+    }
+    category.name = newName
+  }
+  if (body?.slug) {
+    const newSlug = String(body.slug).trim()
+    if (db.categories.some((c) => c.id !== id && c.slug === newSlug)) {
+      throw new ApiError(400, `Slug '${newSlug}' đã tồn tại.`)
+    }
+    category.slug = newSlug
+  }
   if (body?.description !== undefined) category.description = body.description
   return { ...category }
 }

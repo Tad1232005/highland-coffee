@@ -1,5 +1,3 @@
-from typing import AsyncGenerator
-
 from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import sessionmaker
@@ -34,19 +32,3 @@ SyncSessionLocal = sessionmaker(
     autoflush=False,
     autocommit=False,
 )
-
-
-async def get_async_db() -> AsyncGenerator[AsyncSession, None]:
-    async with AsyncSessionLocal() as session:
-        try:
-            yield session
-        finally:
-            await session.close()
-
-
-def get_sync_db():
-    db = SyncSessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()

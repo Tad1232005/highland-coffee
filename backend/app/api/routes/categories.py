@@ -18,7 +18,9 @@ router = APIRouter(prefix="/categories", tags=["Categories"])
 async def list_categories(db: AsyncSession = Depends(get_db)):
     """List all beverage and food categories."""
     result = await db.execute(select(Category).order_by(Category.id))
-    return result.scalars().all()
+    # Serialise before the session closes: the cached value must not be a
+    # detached ORM instance.
+    return [CategoryResponse.model_validate(category) for category in result.scalars().all()]
 
 
 @router.get("/{category_id}", response_model=CategoryResponse)
@@ -32,7 +34,7 @@ async def get_category(category_id: int, db: AsyncSession = Depends(get_db)):
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Category with ID {category_id} not found",
         )
-    return category
+    return CategoryResponse.model_validate(category)
 
 
 @router.post("", response_model=CategoryResponse, status_code=status.HTTP_201_CREATED)
@@ -60,13 +62,22 @@ async def create_category(
         description=category_in.description,
     )
     db.add(category)
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError as error:
+        # Two requests can pass the check above at the same time; the unique
+        # constraint is the final arbiter.
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Category with this name or slug already exists",
+        ) from error
     await db.refresh(category)
 
     # Invalidate category caches
     invalidate_all_caches()
 
-    return category
+    return CategoryResponse.model_validate(category)
 
 
 @router.put("/{category_id}", response_model=CategoryResponse)
@@ -85,38 +96,53 @@ async def update_category(
             detail=f"Category with ID {category_id} not found",
         )
 
-    if category_in.name is not None:
+    # Only the fields the client sent are applied, so an explicit null clears
+    # the description instead of being ignored.
+    updates = category_in.model_dump(exclude_unset=True)
+
+    name = updates.get("name")
+    if name is not None:
         existing_name = await db.execute(
-            select(Category).where(Category.name == category_in.name, Category.id != category_id)
+            select(Category).where(Category.name == name, Category.id != category_id)
         )
         if existing_name.scalar_one_or_none():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Name is already used by another category",
             )
-        category.name = category_in.name
-    if category_in.slug is not None:
+        category.name = name
+
+    slug = updates.get("slug")
+    if slug is not None:
         # Check uniqueness if changed
         existing_slug = await db.execute(
-            select(Category).where(Category.slug == category_in.slug, Category.id != category_id)
+            select(Category).where(Category.slug == slug, Category.id != category_id)
         )
         if existing_slug.scalar_one_or_none():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Slug is already used by another category",
             )
-        category.slug = category_in.slug
-    if category_in.description is not None:
-        category.description = category_in.description
+        category.slug = slug
+
+    if "description" in updates:
+        category.description = updates["description"]
 
     db.add(category)
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError as error:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Category with this name or slug already exists",
+        ) from error
     await db.refresh(category)
 
     # Invalidate category caches
     invalidate_all_caches()
 
-    return category
+    return CategoryResponse.model_validate(category)
 
 
 @router.delete("/{category_id}", status_code=status.HTTP_204_NO_CONTENT)

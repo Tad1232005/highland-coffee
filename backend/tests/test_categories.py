@@ -132,3 +132,68 @@ def test_update_category_rejects_duplicate_name_and_preserves_data(client):
     assert response.status_code == 400
     assert client.get(path).json()["name"] == second["name"]
     assert client.put(path, json={"name": second["name"]}, headers=headers).status_code == 200
+
+
+def test_category_mutations_refresh_cached_reads(client):
+    """Tạo/sửa/xoá danh mục phải hiển thị ngay trong list và detail (cache bị xoá)."""
+    headers = {"Authorization": f"Bearer {get_admin_token(client)}"}
+    suffix = uuid.uuid4().hex[:8]
+    name = f"Test Cache {suffix}"
+    slug = f"test-cache-{suffix}"
+
+    # Làm nóng cache list/detail trước khi ghi.
+    assert client.get("/api/categories").status_code == 200
+
+    created = client.post(
+        "/api/categories",
+        json={"name": name, "slug": slug},
+        headers=headers,
+    )
+    assert created.status_code == 201
+    category_id = created.json()["id"]
+    assert any(c["id"] == category_id for c in client.get("/api/categories").json())
+
+    assert client.get(f"/api/categories/{category_id}").json()["name"] == name
+
+    renamed = f"Test Cache Renamed {suffix}"
+    assert (
+        client.put(
+            f"/api/categories/{category_id}",
+            json={"name": renamed},
+            headers=headers,
+        ).status_code
+        == 200
+    )
+    assert client.get(f"/api/categories/{category_id}").json()["name"] == renamed
+    listed = {c["id"]: c["name"] for c in client.get("/api/categories").json()}
+    assert listed[category_id] == renamed
+
+    assert client.delete(f"/api/categories/{category_id}", headers=headers).status_code == 204
+    assert client.get(f"/api/categories/{category_id}").status_code == 404
+    assert all(c["id"] != category_id for c in client.get("/api/categories").json())
+
+
+def test_update_category_can_clear_description(client):
+    """PUT gửi null phải xoá được description của danh mục."""
+    headers = {"Authorization": f"Bearer {get_admin_token(client)}"}
+    suffix = uuid.uuid4().hex[:8]
+    created = client.post(
+        "/api/categories",
+        json={
+            "name": f"Test Clear {suffix}",
+            "slug": f"test-clear-{suffix}",
+            "description": "Mô tả ban đầu",
+        },
+        headers=headers,
+    )
+    assert created.status_code == 201
+    category_id = created.json()["id"]
+
+    cleared = client.put(
+        f"/api/categories/{category_id}",
+        json={"description": None},
+        headers=headers,
+    )
+    assert cleared.status_code == 200
+    assert cleared.json()["description"] is None
+    assert cleared.json()["name"] == f"Test Clear {suffix}"

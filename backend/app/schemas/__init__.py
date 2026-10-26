@@ -15,6 +15,9 @@ from app.schemas.order import (
     OrderListResponse,
     OrderResponse,
     OrderStatusUpdate,
+    RevenueAnalyticsResponse,
+    RevenuePoint,
+    RevenueSummary,
 )
 from app.schemas.product import (
     ProductCreate,
@@ -52,4 +55,7 @@ __all__ = [
     "OrderResponse",
     "OrderStatusUpdate",
     "OrderListResponse",
+    "RevenuePoint",
+    "RevenueSummary",
+    "RevenueAnalyticsResponse",
 ]

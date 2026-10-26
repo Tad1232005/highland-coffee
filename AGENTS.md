@@ -273,7 +273,7 @@ HighlandCF/
 
 ## 8. Testing
 
-- 26 backend integration tests against a real PostgreSQL (no SQLite/in-memory), across
+- 31 backend integration tests against a real PostgreSQL (no SQLite/in-memory), across
   `test_auth.py`, `test_products.py`, `test_categories.py`, `test_orders.py`, `test_constraints.py`.
 - Tests require migrations + seed first:
   ```bash
@@ -281,7 +281,7 @@ HighlandCF/
   python -m app.seed
   pytest -q
   ```
-- `tests/conftest.py`: session-scoped `TestClient`; `clean_db` autouse fixture removes test-created rows after each test (`order_items`, `orders`, `cart_items`, `categories.slug LIKE 'test-%'`, `slug LIKE 'test-%'`, `email LIKE 'user_%@example.com'`) while preserving seed data.
+- `tests/conftest.py`: session-scoped `TestClient`; `clean_db` autouse fixture removes test-created rows after each test (orders above the suite's starting `MAX(orders.id)`, carts of the seeded customer + `user_%@example.com` accounts, `categories.slug LIKE 'test-%'`, `slug LIKE 'test-%'`, `email LIKE 'user_%@example.com'`) while preserving seed data.
 - CI seeds the DB before running tests.
 - Frontend: 6 test file / 37 test (Vitest + Testing Library, jsdom): `src/App.test.jsx` (smoke), `src/pages/Login.test.jsx`, `src/pages/Register.test.jsx`, `src/components/ConfirmProvider.test.jsx`, `src/mock/adapter.test.js`, `src/pages/UserOrdering.test.jsx` (debounce, giỏ hàng, checkout, phân trang, lỗi tải/ảnh).
 - `vite.config.js` bật `test.globals = true` để Testing Library tự dọn DOM giữa các test.
@@ -305,7 +305,8 @@ Triggers: push/PR to `main`, `master`, `dev`.
 ### High
 | Area | Issue | Suggested fix | Status |
 |---|---|---|---|
-| Docker | No `.dockerignore`. `COPY . .` copies `backend/.env` (secrets), `.venv`, `node_modules`, `.git` into images. | Add `backend/.dockerignore` and `frontend/.dockerignore`. | Open |
+| Docker | No `.dockerignore`. `COPY . .` copies `backend/.env` (secrets), `.venv`, `node_modules`, `.git` into images. | Add `backend/.dockerignore` and `frontend/.dockerignore`. | Fixed - both files added |
+| API | Cache invalidation never ran: `register_cache()` was never called, so a created/renamed category or product stayed stale for 60-300 s. | Register each cache inside `@cached`; call `invalidate_all_caches()` after every write. | Fixed - `core/cache.py` registers caches |
 | Security | `SECRET_KEY` has a hard-coded default fallback in `config.py`; a missing `.env` silently signs JWTs with a public key. | Fail fast when unset outside dev. | Fixed - `config.py` rejects empty/placeholder/<32-char keys at startup |
 | API | `DELETE /categories/{id}` with existing products raises an unhandled `IntegrityError` → **500**. | Catch `IntegrityError`, return 400. | Fixed - `routes/categories.py` returns 400 |
 | Deps | Only direct Python deps are pinned; transitive deps still float. | Generate a full lock (`pip freeze` / `uv lock`). | Open |
@@ -325,6 +326,8 @@ Triggers: push/PR to `main`, `master`, `dev`.
 | Auth | JWT stored in `localStorage` (XSS exposure); no refresh/revocation. | Consider httpOnly cookies + refresh tokens. | Open (deferred by design) |
 | Docker | Images run as root; frontend uses `vite preview`; compose does not wire backend/frontend. | Non-root user, production server, compose services. | Open |
 | Code | Redundant `Order.id == Order.id` in `get_my_orders` (`orders.py`). | Remove. | Fixed |
+| API | `PUT` ignored explicit `null`, so `description` / `image_url` / `phone` could never be cleared. | `model_dump(exclude_unset=True)` + per-field null policy. | Fixed - products, categories, `auth/me` |
+| Tests | `clean_db` deleted every order and cart row, wiping seed/demo data on the shared dev DB. | Scope cleanup to rows created by the suite. | Fixed - `tests/conftest.py` |
 | Tests | `pytest-asyncio` is installed and `asyncio_mode=auto`, but all tests are sync. | Remove plugin or add async tests. | Open |
 | Docs | README says SQLAlchemy 2.0 / React Router v6; actual 2.1.5 / v7. | This file is authoritative. | Fixed - `backend/README.md`, `docs/architecture.md` updated |
 | CI | Alembic autogenerate output is unformatted; `ruff format --check` will fail on new migrations. | Run `ruff format` after generating. | Fixed - new migration is formatted |

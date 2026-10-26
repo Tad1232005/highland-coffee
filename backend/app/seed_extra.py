@@ -1,13 +1,17 @@
 """Expand the seed database with ~10 records per table for testing/demo.
 
 Adds 10 users, 10 categories, 10 products, ~15 cart_items, ~15 orders,
-and matching order_items. Existing seed data is preserved.
+and matching order_items.
+
+Users, categories and products are only inserted when missing (running it
+twice is safe). Cart items and orders are regenerated on every run, so any
+order placed manually against this demo database is discarded.
 """
 
 import sys
 from datetime import datetime, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 
 # Ensure UTF-8 output on Windows consoles
 if hasattr(sys.stdout, "reconfigure"):
@@ -256,7 +260,7 @@ def seed_extra():
         print("[4/6] Adding cart items...")
 
         # Clear existing test cart items (keep seed)
-        session.query(CartItem).delete(synchronize_session="fetch")
+        session.execute(delete(CartItem))
         session.commit()
 
         cart_items_data = [
@@ -290,7 +294,7 @@ def seed_extra():
         print("[5/6] Adding orders...")
 
         # Clear existing test orders
-        session.query(Order).delete(synchronize_session="fetch")
+        session.execute(delete(Order))
         session.commit()
 
         statuses_cycle = ["pending", "confirmed", "preparing", "completed", "cancelled"]
