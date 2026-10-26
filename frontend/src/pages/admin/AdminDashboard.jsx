@@ -52,12 +52,13 @@ export function AdminDashboard() {
     categories: [],
     revenue: { revenue: 0, completed_orders: 0 },
   }
+  const pendingCount = summary.statuses.pending ?? 0
+  const hiddenCount = summary.totalProducts - summary.availableProducts
 
   return (
     <section className="admin__panel admin-dashboard">
       <header className="admin__panel-head">
         <div>
-          <p className="admin__eyebrow">Highlands Coffee · Quản trị</p>
           <h1 className="admin__panel-title">Tổng quan</h1>
           <p className="admin__panel-sub">Tình hình đơn hàng và thực đơn của cửa hàng.</p>
         </div>
@@ -67,31 +68,35 @@ export function AdminDashboard() {
         </div>
       </header>
 
-      {error && <p className="notice notice--error">{error}</p>}
+      {error && (
+        <p className="notice notice--error" role="alert">
+          {error}
+        </p>
+      )}
       {loading && <Loading label="Đang tải tổng quan" />}
 
       {!loading && data && (
         <>
-          <div className="admin-dashboard__stats" aria-label="Chỉ số cửa hàng">
-            <article className="admin-stat">
-              <span className="admin-stat__label">Doanh thu 7 ngày</span>
-              <strong className="admin-stat__value">{formatPrice(summary.revenue.revenue)}</strong>
-              <span className="admin-stat__hint">{summary.revenue.completed_orders} đơn hoàn tất</span>
+          <div className="admin-metrics" role="group" aria-label="Chỉ số cửa hàng">
+            <article className="admin-metric admin-metric--lead">
+              <span className="admin-metric__label">Doanh thu 7 ngày</span>
+              <strong className="admin-metric__value">{formatPrice(summary.revenue.revenue)}</strong>
+              <span className="admin-metric__hint">{summary.revenue.completed_orders} đơn hoàn tất</span>
             </article>
-            <article className="admin-stat">
-              <span className="admin-stat__label">Tổng đơn hàng</span>
-              <strong className="admin-stat__value">{summary.totalOrders}</strong>
-              <span className="admin-stat__hint">Tất cả trạng thái</span>
+            <article className="admin-metric">
+              <span className="admin-metric__label">Đơn hàng</span>
+              <strong className="admin-metric__value">{summary.totalOrders}</strong>
+              <span className="admin-metric__hint">Tất cả trạng thái</span>
             </article>
-            <article className="admin-stat">
-              <span className="admin-stat__label">Đang bán</span>
-              <strong className="admin-stat__value">{summary.availableProducts}</strong>
-              <span className="admin-stat__hint">trên {summary.totalProducts} sản phẩm</span>
+            <article className="admin-metric">
+              <span className="admin-metric__label">Đang bán</span>
+              <strong className="admin-metric__value">{summary.availableProducts}</strong>
+              <span className="admin-metric__hint">trên {summary.totalProducts} sản phẩm</span>
             </article>
-            <article className="admin-stat">
-              <span className="admin-stat__label">Danh mục</span>
-              <strong className="admin-stat__value">{summary.categories.length}</strong>
-              <span className="admin-stat__hint">nhóm trên thực đơn</span>
+            <article className="admin-metric">
+              <span className="admin-metric__label">Danh mục</span>
+              <strong className="admin-metric__value">{summary.categories.length}</strong>
+              <span className="admin-metric__hint">nhóm trên thực đơn</span>
             </article>
           </div>
 
@@ -102,18 +107,22 @@ export function AdminDashboard() {
                 <p className="admin__panel-sub">Các mục có thể cần bạn kiểm tra.</p>
               </div>
             </div>
-            {(summary.statuses.pending ?? 0) + (summary.totalProducts - summary.availableProducts) > 0 ? (
+            {pendingCount + hiddenCount > 0 ? (
               <div className="admin-dashboard__attention-grid">
-                <Link to="/admin/orders?status=pending" className="admin-attention-card">
-                  <span className="admin-attention-card__label">Đơn chờ xác nhận</span>
-                  <strong>{summary.statuses.pending ?? 0}</strong>
-                  <span className="admin-attention-card__action">Mở danh sách đơn <span aria-hidden="true">→</span></span>
-                </Link>
-                <Link to="/admin/products" className="admin-attention-card">
-                  <span className="admin-attention-card__label">Món đang ẩn</span>
-                  <strong>{summary.totalProducts - summary.availableProducts}</strong>
-                  <span className="admin-attention-card__action">Kiểm tra thực đơn <span aria-hidden="true">→</span></span>
-                </Link>
+                {pendingCount > 0 && (
+                  <Link to="/admin/orders?status=pending" className="admin-attention-card">
+                    <span className="admin-attention-card__label">Đơn chờ xác nhận</span>
+                    <strong>{pendingCount}</strong>
+                    <span className="admin-attention-card__action">Xem danh sách đơn</span>
+                  </Link>
+                )}
+                {hiddenCount > 0 && (
+                  <Link to="/admin/products" className="admin-attention-card">
+                    <span className="admin-attention-card__label">Món đang ẩn</span>
+                    <strong>{hiddenCount}</strong>
+                    <span className="admin-attention-card__action">Xem thực đơn</span>
+                  </Link>
+                )}
               </div>
             ) : (
               <p className="admin-dashboard__all-clear">Hiện không có đơn chờ xác nhận hoặc món đang ẩn.</p>
@@ -147,7 +156,7 @@ export function AdminDashboard() {
             <div className="admin-dashboard__section-head">
               <div>
                 <h2 className="admin__form-title" id="admin-recent-title">Đơn hàng mới</h2>
-                <p className="admin__panel-sub">6 đơn được cập nhật gần đây nhất.</p>
+                <p className="admin__panel-sub">6 đơn được tạo gần đây nhất.</p>
               </div>
               <Link to="/admin/orders" className="text-link">Xem tất cả</Link>
             </div>
@@ -184,11 +193,9 @@ export function AdminDashboard() {
           <section className="admin-dashboard__quick-links" aria-label="Lối tắt quản trị">
             <Link to="/admin/products" className="admin-quick-link">
               <span><strong>Thực đơn</strong><small>Thêm món, cập nhật giá và trạng thái bán</small></span>
-              <span aria-hidden="true">→</span>
             </Link>
             <Link to="/admin/categories" className="admin-quick-link">
               <span><strong>Danh mục</strong><small>Sắp xếp nhóm món trên thực đơn</small></span>
-              <span aria-hidden="true">→</span>
             </Link>
           </section>
         </>

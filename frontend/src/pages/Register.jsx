@@ -56,7 +56,11 @@ export function Register() {
         <h1 className="auth__title">Đăng ký</h1>
         <p className="auth__lead">Tạo tài khoản Highlands để đặt món nhanh hơn và nhận ưu đãi thành viên.</p>
 
-        {formError && <p className="notice notice--error">{formError}</p>}
+        {formError && (
+          <p className="notice notice--error" role="alert">
+            {formError}
+          </p>
+        )}
 
         <form className="auth__form" onSubmit={handleSubmit} noValidate>
           <div className="field">

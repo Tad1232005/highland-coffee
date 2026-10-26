@@ -67,7 +67,11 @@ export function Login() {
         <h1 className="auth__title">Đăng nhập</h1>
         <p className="auth__lead">Chào mừng trở lại! Đăng nhập để tiếp tục đặt ly cà phê của bạn.</p>
 
-        {formError && <p className="notice notice--error">{formError}</p>}
+        {formError && (
+          <p className="notice notice--error" role="alert">
+            {formError}
+          </p>
+        )}
 
         <form className="auth__form" onSubmit={handleSubmit} noValidate>
           <div className="field">

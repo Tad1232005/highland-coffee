@@ -27,12 +27,8 @@ function daysBetween(start, end) {
 }
 
 function formatRangeDate(value) {
-  return new Intl.DateTimeFormat('vi-VN', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    timeZone: 'Asia/Ho_Chi_Minh',
-  }).format(new Date(`${value}T12:00:00`))
+  const [year, month, day] = value.split('-')
+  return `${day}/${month}/${year}`
 }
 
 function formatChartDate(value, days) {
@@ -70,7 +66,9 @@ export function AdminAnalytics() {
   const { data, error: loadError, loading } = useAsyncData(loader, rangeKey)
   const error = rangeError || loadError
   const items = data?.items ?? []
-  const rangeDays = data?.days ?? (selectedRange ? daysBetween(selectedRange.start_date, selectedRange.end_date) : days)
+  const rangeDays =
+    data?.days ??
+    (selectedRange ? daysBetween(selectedRange.start_date, selectedRange.end_date) : days)
   const maxRevenue = Math.max(1, ...items.map((item) => item.revenue))
   const summary = data?.summary ?? {
     revenue: items.reduce((total, item) => total + item.revenue, 0),
@@ -92,6 +90,9 @@ export function AdminAnalytics() {
     gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))`,
     ...(rangeDays > 14 ? { minWidth: `${Math.max(46, items.length * 1.7)}rem` } : {}),
   }
+  const chartLabel = `Biểu đồ doanh thu ${rangeDays} ngày: ${items
+    .map((item) => `${item.date} ${formatPrice(item.revenue)}`)
+    .join(', ')}`
 
   const applyCustomRange = (event) => {
     event.preventDefault()
@@ -119,13 +120,12 @@ export function AdminAnalytics() {
     <section className="admin__panel admin-analytics">
       <header className="admin__panel-head">
         <div>
-          <p className="admin__eyebrow">Báo cáo cửa hàng</p>
           <h1 className="admin__panel-title">Phân tích doanh thu</h1>
           <p className="admin__panel-sub">
             Doanh thu theo ngày hoàn tất đơn{rangeDescription ? ` · ${rangeDescription}` : ''}.
           </p>
         </div>
-        <div className="admin__filters" aria-label="Khoảng thời gian">
+        <div className="admin__filters" role="group" aria-label="Khoảng thời gian">
           {PERIODS.map((period) => (
             <button
               key={period}
@@ -149,7 +149,10 @@ export function AdminAnalytics() {
             type="date"
             value={customStart}
             max={today}
-            onChange={(event) => setCustomStart(event.target.value)}
+            onChange={(event) => {
+              setCustomStart(event.target.value)
+              setRangeError('')
+            }}
             aria-required="true"
           />
         </div>
@@ -161,11 +164,14 @@ export function AdminAnalytics() {
             type="date"
             value={customEnd}
             max={today}
-            onChange={(event) => setCustomEnd(event.target.value)}
+            onChange={(event) => {
+              setCustomEnd(event.target.value)
+              setRangeError('')
+            }}
             aria-required="true"
           />
         </div>
-        <button className="btn btn--outline btn--sm" type="submit">Áp dụng khoảng ngày</button>
+        <button className="btn btn--outline btn--sm" type="submit">Áp dụng</button>
       </form>
 
       {error && <p className="notice notice--error" role="alert">{error}</p>}
@@ -173,42 +179,46 @@ export function AdminAnalytics() {
 
       {!loading && data && (
         <>
-          <div className="admin-dashboard__stats admin-analytics__stats">
-            <article className="admin-stat admin-stat--highlight admin-analytics__primary">
-              <div className="admin-analytics__primary-head">
-              <span className="admin-stat__label">Tổng doanh thu · {rangeDays} ngày</span>
+          <div
+            className="admin-metrics admin-metrics--analytics"
+            role="group"
+            aria-label="Chỉ số doanh thu"
+          >
+            <article className="admin-metric admin-metric--lead">
+              <div className="admin-metric__head">
+                <span className="admin-metric__label">Tổng doanh thu · {rangeDays} ngày</span>
                 <span className={comparisonClass}>
                   {comparison === null
                     ? 'Chưa so sánh'
                     : `${comparison > 0 ? '+' : ''}${comparison.toLocaleString('vi-VN')}%`}
                 </span>
               </div>
-              <strong className="admin-analytics__amount">{formatPrice(summary.revenue)}</strong>
-              <span className="admin-stat__hint">
+              <strong className="admin-metric__value">{formatPrice(summary.revenue)}</strong>
+              <span className="admin-metric__hint">
                 Kỳ trước: {formatPrice(summary.previous_revenue)}
                 {comparison !== null && ` · so với ${rangeDays} ngày trước`}
               </span>
             </article>
-            <article className="admin-stat admin-analytics__metric">
-              <span className="admin-stat__label">Đơn hoàn tất</span>
-              <strong className="admin-analytics__amount">{summary.completed_orders}</strong>
-              <span className="admin-stat__hint">
+            <article className="admin-metric">
+              <span className="admin-metric__label">Đơn hoàn tất</span>
+              <strong className="admin-metric__value">{summary.completed_orders}</strong>
+              <span className="admin-metric__hint">
                 Kỳ trước: {summary.previous_completed_orders} đơn
               </span>
             </article>
-            <article className="admin-stat admin-analytics__metric">
-              <span className="admin-stat__label">Trung bình / đơn</span>
-              <strong className="admin-analytics__amount">
+            <article className="admin-metric">
+              <span className="admin-metric__label">Trung bình / đơn</span>
+              <strong className="admin-metric__value">
                 {formatPrice(summary.average_order_value)}
               </strong>
-              <span className="admin-stat__hint">Mỗi đơn hoàn tất</span>
+              <span className="admin-metric__hint">Mỗi đơn hoàn tất</span>
             </article>
-            <article className="admin-stat admin-analytics__metric">
-              <span className="admin-stat__label">Trung bình / ngày</span>
-              <strong className="admin-analytics__amount">
+            <article className="admin-metric">
+              <span className="admin-metric__label">Trung bình / ngày</span>
+              <strong className="admin-metric__value">
                 {formatPrice(Math.round(summary.revenue / rangeDays))}
               </strong>
-              <span className="admin-stat__hint">Tính trên {rangeDays} ngày</span>
+              <span className="admin-metric__hint">Tính trên {rangeDays} ngày</span>
             </article>
           </div>
 
@@ -219,11 +229,7 @@ export function AdminAnalytics() {
                 <p className="admin__panel-sub">Đơn bị huỷ và đơn chưa hoàn tất không được tính.</p>
               </div>
             </div>
-            <div
-              className="admin-chart"
-              role="img"
-              aria-label={`Biểu đồ doanh thu ${rangeDays} ngày: ${items.map((item) => `${item.date} ${formatPrice(item.revenue)}`).join(', ')}`}
-            >
+            <div className="admin-chart" role="img" aria-label={chartLabel}>
               <div
                 className={`admin-chart__plot${rangeDays > 14 ? ' admin-chart__plot--wide' : ''}`}
                 style={chartStyle}
@@ -231,12 +237,20 @@ export function AdminAnalytics() {
                 {items.map((item) => {
                   const height = item.revenue ? Math.max(6, (item.revenue / maxRevenue) * 100) : 0
                   return (
-                    <div className="admin-chart__column" key={item.date} title={`${item.date}: ${formatPrice(item.revenue)}`}>
-                      <strong className="admin-chart__value">{formatChartValue(item.revenue)}</strong>
+                    <div
+                      className="admin-chart__column"
+                      key={item.date}
+                      title={`${item.date}: ${formatPrice(item.revenue)}`}
+                    >
+                      <strong className="admin-chart__value">
+                        {formatChartValue(item.revenue)}
+                      </strong>
                       <div className="admin-chart__track">
                         <span className="admin-chart__bar" style={{ height: `${height}%` }} />
                       </div>
-                      <span className="admin-chart__label">{formatChartDate(item.date, rangeDays)}</span>
+                      <span className="admin-chart__label">
+                        {formatChartDate(item.date, rangeDays)}
+                      </span>
                     </div>
                   )
                 })}

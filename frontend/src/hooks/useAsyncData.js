@@ -9,6 +9,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
  */
 export function useAsyncData(loader, key) {
   const [state, setState] = useState({ key: null, data: null, error: '', errorStatus: null })
+  const [nonce, setNonce] = useState(0)
   const version = useRef(0)
 
   useEffect(() => {
@@ -34,7 +35,7 @@ export function useAsyncData(loader, key) {
     return () => {
       active = false
     }
-  }, [loader, key])
+  }, [loader, key, nonce])
 
   const update = useCallback((next) => {
     // A mutation response supersedes any older read still in flight.
@@ -48,11 +49,15 @@ export function useAsyncData(loader, key) {
     }))
   }, [key])
 
+  /** Tải lại từ nguồn: dùng khi server đã đổi dữ liệu mà bản cập nhật cục bộ không đủ. */
+  const reload = useCallback(() => setNonce((current) => current + 1), [])
+
   return {
     data: state.key === key ? state.data : null,
     error: state.key === key ? state.error : '',
     errorStatus: state.key === key ? state.errorStatus : null,
     loading: state.key !== key,
     update,
+    reload,
   }
 }
