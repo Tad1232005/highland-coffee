@@ -169,7 +169,7 @@ HighlandCF/
 │   │   ├── main.py                  # app + CORS + /api/health
 │   │   └── seed.py                  # admin, customer, 4 categories, 18 products
 │   ├── alembic/                     # migrations
-│   ├── tests/                       # conftest + 5 test modules (22 tests)
+│   ├── tests/                       # conftest + 5 test modules (26 tests)
 │   ├── Dockerfile
 │   ├── README.md
 │   ├── pyproject.toml               # ruff + pytest config
@@ -273,7 +273,7 @@ HighlandCF/
 
 ## 8. Testing
 
-- 22 backend integration tests against a real PostgreSQL (no SQLite/in-memory), across
+- 26 backend integration tests against a real PostgreSQL (no SQLite/in-memory), across
   `test_auth.py`, `test_products.py`, `test_categories.py`, `test_orders.py`, `test_constraints.py`.
 - Tests require migrations + seed first:
   ```bash
