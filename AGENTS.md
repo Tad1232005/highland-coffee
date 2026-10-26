@@ -109,6 +109,20 @@ ruff format .
 > `python -m ensurepip --upgrade` (if `pip.exe` is still stale, copy `pip3.exe` over it).
 > Workaround without reinstalling: `python -m uvicorn app.main:app --reload --port 8000`.
 
+> **Agent/automation shells do not inherit your activated venv.** Tools such as OpenCode spawn a
+> fresh `powershell -NoLogo -NoProfile -NonInteractive -Command ...` for every command, inheriting the
+> environment of the background server (not your terminal). If that environment has no venv — or a
+> stale `VIRTUAL_ENV` pointing at an old checkout — `python` resolves to the system interpreter and
+> `pytest` / `ruff` / `alembic` are missing from `PATH`. Call the venv interpreter explicitly:
+> ```powershell
+> cd backend
+> .\.venv\Scripts\python.exe -m pytest -q
+> .\.venv\Scripts\python.exe -m ruff check .
+> .\.venv\Scripts\python.exe -m alembic upgrade head
+> .\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 8000
+> ```
+> (`python -m <tool>` bypasses the venv's console-script launchers, so it also survives a repo move.)
+
 ### Frontend (`cd frontend`)
 ```bash
 npm ci
@@ -166,13 +180,13 @@ HighlandCF/
 │   │   ├── components/         # Header, Footer, ProductCard, PhinDrip, StatusBadge, Modal, Toast/Confirm provider, AccountMenu
 │   │   ├── content/            # site.js (brand info), orders.js (status machine)
 │   │   ├── context/            # AuthProvider, CartProvider, Toast/Confirm (+ useAuth/useCart/useToast/useConfirm)
-│   │   ├── hooks/              # useAsyncData.js (tải dữ liệu), useLogout.js (logout + confirm)
+│   │   ├── hooks/              # useAsyncData.js (tải dữ liệu + reload), useLogout.js (logout + confirm)
 │   │   ├── mock/               # data.js + adapter.js (REST giả lập mirror backend)
 │   │   ├── pages/              # Home, Menu, ProductDetail, Cart, Checkout, MyOrders, Login, Register, NotFound
 │   │   │   └── admin/          # AdminLayout, AdminLogin, AdminOrders, AdminProducts, AdminCategories
 │   │   ├── routes/index.jsx    # React Router 7 + RequireAuth / RequireAdmin
 │   │   ├── styles/             # hero.css (hero + phin rơi), pages.css (style cấp trang)
-│   │   ├── utils/format.js     # formatPrice, formatDate, slugify
+│   │   ├── utils/format.js     # formatPrice, formatDate, slugify, normalizeSearch
 │   │   ├── App.jsx             # BrowserRouter + providers (Toast > Confirm > Auth > Cart)
 │   │   ├── App.test.jsx        # smoke test
 │   │   ├── index.css           # design system (token màu/chữ/spacing + primitive)
@@ -205,7 +219,7 @@ HighlandCF/
 |---|---|
 | Auth | `POST /auth/register`, `POST /auth/login`, `GET/PUT /auth/me` |
 | Categories | `GET /categories`, `GET /categories/{id}`, `POST/PUT/DELETE` (admin) |
-| Products | `GET /products` (q, category_id, min/max price, page/size), `GET /products/{id}`, `POST/PUT/DELETE` (admin; DELETE = soft delete) |
+| Products | `GET /products` (q, category_id, min/max price, page/size), `GET /products/{id}`, `POST/PUT/DELETE` (admin; DELETE = soft delete), `DELETE /products/{id}/permanent` (admin; chỉ món đã ẩn và không có lịch sử đơn) |
 | Cart | `GET/POST /cart/items`, `PATCH/DELETE /cart/items/{id}`, `DELETE /cart/items` (auth) |
 | Orders | `POST/GET /orders`, `GET /orders/{id}`, `GET /admin/orders`, `PATCH /admin/orders/{id}/status`, `GET /admin/analytics/revenue?days=7` (both list endpoints are paginated: `page`/`size`; revenue sums completed orders by order date in `Asia/Ho_Chi_Minh`) |
 | Health | `GET /api/health` |
@@ -247,7 +261,11 @@ HighlandCF/
 - `react-hooks/set-state-in-effect` là **error**: tải dữ liệu qua `src/hooks/useAsyncData.js` (loader bọc `useCallback`), không `setState` đồng bộ trong `useEffect`.
 - Không dùng `window.alert` / `window.confirm`: dùng `useToast()` (`notify`) và `useConfirm()` (`await confirm({...})`).
 - Thứ tự provider trong `src/App.jsx` là `BrowserRouter > ToastProvider > ConfirmProvider > AuthProvider > CartProvider` (hook `useLogout` cần Toast + Confirm nằm ngoài Auth).
-- Login/Register là 2 trang riêng (`src/pages/Login.jsx`, `src/pages/Register.jsx`), dùng chung validator `src/utils/validation.js`; layout là thẻ card căn giữa (`.auth__card`), không dùng panel trượt.
+- Login/Register là 2 trang riêng (`src/pages/Login.jsx`, `src/pages/Register.jsx`), dùng chung validator `src/utils/validation.js`; layout là thẻ card căn giữa (`.auth__card`), không dùng panel trượt. `AdminLogin` dùng đúng layout này (`.auth.auth--standalone`) chứ không có màn hình chia đôi riêng.
+- `AdminLayout` có một nút menu duy nhất đặt đầu hàng (bên trái): `<900px` mở/đóng drawer, `>=900px` thu gọn/mở rộng rail (nhớ trong `localStorage['hc.admin-rail']`). Rail thu gọn còn 4.6rem, nhãn ẩn bằng kỹ thuật `visually-hidden` nên vẫn đọc được bằng screen reader. Drawer trượt từ trái, đóng bằng `X`/`Escape`/màn chắn, khoá cuộn nền và trả tiêu điểm về nút Menu.
+- Chuỗi tiếng Việt: slug luôn tạo bằng `slugify()` và tìm kiếm so khớp không dấu bằng `normalizeSearch()` (cả hai ở `src/utils/format.js`) — không viết lại hàm trong từng trang.
+- Sau mutation: danh sách lọc/phân trang phía server (đơn hàng) gọi `reload()` của `useAsyncData`; chỉ cập nhật cục bộ (`update`) khi bộ lọc chạy ở client (sản phẩm, danh mục).
+- Thông báo lỗi dùng `.notice--error` + `role="alert"`; nhóm nút/chỉ số có `aria-label` phải kèm `role="group"`.
 - Form không dùng attribute `required` (native validation chặn submit trước khi validate custom chạy) → dùng `noValidate` + `aria-required` + báo lỗi dưới field.
 - UI khách hàng: Menu có chip lọc/reset; chi tiết món có CTA cố định trên mobile; giỏ hàng phân biệt loading/error/empty. `CartProvider` khóa mutation dùng chung, bao gồm `placeOrder`, và reset state theo tài khoản. Checkout hiển thị xác nhận từ response tạo đơn, không gọi DELETE giỏ lần hai. MyOrders phân trang 10 đơn và dùng vùng mở rộng chi tiết.
 
