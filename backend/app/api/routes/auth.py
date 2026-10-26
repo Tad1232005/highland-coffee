@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db
@@ -47,7 +48,15 @@ async def register(user_in: UserRegister, db: AsyncSession = Depends(get_db)):
         is_active=True,
     )
     db.add(user)
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError as error:
+        # Two registrations for the same email can race past the check above.
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="An account with this email address already exists",
+        ) from error
     await db.refresh(user)
     return user
 
@@ -117,10 +126,13 @@ async def update_me(
     db: AsyncSession = Depends(get_db),
 ):
     """Update profile information of the currently authenticated user."""
-    if user_update.full_name is not None:
-        current_user.full_name = user_update.full_name
-    if user_update.phone is not None:
-        current_user.phone = user_update.phone
+    updates = user_update.model_dump(exclude_unset=True)
+    # full_name is required in the database: an explicit null is ignored.
+    if updates.get("full_name") is not None:
+        current_user.full_name = updates["full_name"]
+    # phone is optional: an explicit null clears it.
+    if "phone" in updates:
+        current_user.phone = updates["phone"]
 
     db.add(current_user)
     await db.commit()

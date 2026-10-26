@@ -39,7 +39,10 @@ export function AuthProvider({ children }) {
   }, [])
 
   const register = useCallback(async (payload) => {
-    const data = await auth.register(payload)
+    // Backend trả về UserResponse (không kèm token) sau khi tạo tài khoản,
+    // nên phải đăng nhập một lần nữa để mở phiên cho người vừa đăng ký.
+    await auth.register(payload)
+    const data = await auth.login({ email: payload.email, password: payload.password })
     saveSession(data.access_token, data.user)
     setUser(data.user)
     setVerified(true)

@@ -1,24 +1,26 @@
 """
 Simple in-memory TTL cache for read-heavy endpoints.
-For production, consider Redis (aioredis/redis-py) instead.
+
+The cache lives in the process memory, so every worker keeps its own copy.
+A multi-worker deployment needs a shared store (Redis) instead.
 """
 
 from functools import wraps
-from typing import Callable
+from typing import Any, Callable
 
 import cachetools
 
 # Default TTL: 60 seconds
 DEFAULT_TTL = 60
 
-# In-memory cache with TTL (max 1000 entries)
-_cache = cachetools.TTLCache(maxsize=1000, ttl=DEFAULT_TTL)
+# Every cache created by @cached, so one mutation can drop all cached reads.
+_function_caches: list[cachetools.TTLCache] = []
 
 
-def make_cache_key(*args, **kwargs) -> str:
-    """Generate a cache key from function arguments."""
+def make_cache_key(*args: Any, **kwargs: Any) -> str:
+    """Build a stable cache key from the function arguments."""
     key_parts = [str(arg) for arg in args]
-    key_parts.extend(f"{k}={v}" for k, v in sorted(kwargs.items()))
+    key_parts.extend(f"{key}={value}" for key, value in sorted(kwargs.items()))
     return ":".join(key_parts)
 
 
@@ -32,13 +34,19 @@ def cached(ttl: int = DEFAULT_TTL, key_prefix: str = ""):
     """
 
     def decorator(func: Callable) -> Callable:
-        # Create a separate cache for this function with its own TTL
+        # Each endpoint gets its own cache with its own TTL.
         func_cache = cachetools.TTLCache(maxsize=1000, ttl=ttl)
+        _function_caches.append(func_cache)
 
         @wraps(func)
         async def wrapper(*args, **kwargs):
-            # Remove 'db' from kwargs if present (not hashable, not part of cache key)
-            cache_kwargs = {k: v for k, v in kwargs.items() if k != "db" and k != "_admin"}
+            # The session and the admin dependency are request-scoped objects,
+            # so they are left out of the key.
+            cache_kwargs = {
+                key: value
+                for key, value in kwargs.items()
+                if key not in ("db", "_admin", "current_user")
+            }
             cache_key = f"{key_prefix}:{func.__name__}:{make_cache_key(*args, **cache_kwargs)}"
 
             if cache_key in func_cache:
@@ -55,30 +63,7 @@ def cached(ttl: int = DEFAULT_TTL, key_prefix: str = ""):
     return decorator
 
 
-def invalidate_cache(prefix: str):
-    """Invalidate all cache entries with given prefix."""
-    # This is a simple approach - in reality you'd want a more sophisticated
-    # invalidation strategy (e.g., using Redis with pattern matching)
-    pass
-
-
-# Convenience function to clear all caches
-def clear_all_caches():
-    """Clear all function caches. Call after data mutations."""
-    # This will be populated by the decorator
-    pass
-
-
-# Registry of all function caches for bulk invalidation
-_function_caches: list = []
-
-
-def register_cache(cache_obj):
-    """Register a function cache for bulk invalidation."""
-    _function_caches.append(cache_obj)
-
-
-def invalidate_all_caches():
-    """Clear all registered function caches."""
+def invalidate_all_caches() -> None:
+    """Drop every cached read. Call after any mutation."""
     for cache_obj in _function_caches:
         cache_obj.clear()

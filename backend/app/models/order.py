@@ -64,8 +64,6 @@ class Order(Base):
             "status IN ('pending', 'confirmed', 'preparing', 'completed', 'cancelled')",
             name="ck_orders_status",
         ),
-        Index("ix_orders_user_id", "user_id"),
-        Index("ix_orders_status", "status"),
         Index("ix_orders_status_completed_at", "status", "completed_at"),
         # Composite indexes for the ORDER BY created_at DESC queries used by
         # both get_my_orders (customer) and admin_list_orders (admin).
