@@ -1,7 +1,7 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import List, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 from app.schemas.user import UserResponse
 
@@ -19,9 +19,14 @@ class OrderItemResponse(BaseModel):
     product_name: str
     unit_price: int
     quantity: int
-    subtotal: int
 
     model_config = ConfigDict(from_attributes=True)
+
+    @computed_field
+    @property
+    def subtotal(self) -> int:
+        """Line total. Derived, never stored, so it cannot drift from the row."""
+        return self.unit_price * self.quantity
 
 
 class OrderResponse(BaseModel):
@@ -35,6 +40,7 @@ class OrderResponse(BaseModel):
     address: str
     note: Optional[str] = None
     created_at: datetime
+    completed_at: Optional[datetime] = None
     items: List[OrderItemResponse]
     user: Optional[UserResponse] = None
 
@@ -51,3 +57,25 @@ class OrderListResponse(BaseModel):
     page: int
     size: int
     total_pages: int
+
+
+class RevenuePoint(BaseModel):
+    date: date
+    revenue: int
+
+
+class RevenueSummary(BaseModel):
+    revenue: int
+    completed_orders: int
+    average_order_value: int
+    previous_revenue: int
+    previous_completed_orders: int
+    revenue_change_percent: Optional[float] = None
+
+
+class RevenueAnalyticsResponse(BaseModel):
+    days: int
+    start_date: date
+    end_date: date
+    items: List[RevenuePoint]
+    summary: RevenueSummary

@@ -109,6 +109,20 @@ ruff format .
 > `python -m ensurepip --upgrade` (if `pip.exe` is still stale, copy `pip3.exe` over it).
 > Workaround without reinstalling: `python -m uvicorn app.main:app --reload --port 8000`.
 
+> **Agent/automation shells do not inherit your activated venv.** Tools such as OpenCode spawn a
+> fresh `powershell -NoLogo -NoProfile -NonInteractive -Command ...` for every command, inheriting the
+> environment of the background server (not your terminal). If that environment has no venv — or a
+> stale `VIRTUAL_ENV` pointing at an old checkout — `python` resolves to the system interpreter and
+> `pytest` / `ruff` / `alembic` are missing from `PATH`. Call the venv interpreter explicitly:
+> ```powershell
+> cd backend
+> .\.venv\Scripts\python.exe -m pytest -q
+> .\.venv\Scripts\python.exe -m ruff check .
+> .\.venv\Scripts\python.exe -m alembic upgrade head
+> .\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 8000
+> ```
+> (`python -m <tool>` bypasses the venv's console-script launchers, so it also survives a repo move.)
+
 ### Frontend (`cd frontend`)
 ```bash
 npm ci
@@ -155,7 +169,7 @@ HighlandCF/
 │   │   ├── main.py                  # app + CORS + /api/health
 │   │   └── seed.py                  # admin, customer, 4 categories, 18 products
 │   ├── alembic/                     # migrations
-│   ├── tests/                       # conftest + 5 test modules (22 tests)
+│   ├── tests/                       # conftest + 5 test modules (26 tests)
 │   ├── Dockerfile
 │   ├── README.md
 │   ├── pyproject.toml               # ruff + pytest config
@@ -166,13 +180,13 @@ HighlandCF/
 │   │   ├── components/         # Header, Footer, ProductCard, PhinDrip, StatusBadge, Modal, Toast/Confirm provider, AccountMenu
 │   │   ├── content/            # site.js (brand info), orders.js (status machine)
 │   │   ├── context/            # AuthProvider, CartProvider, Toast/Confirm (+ useAuth/useCart/useToast/useConfirm)
-│   │   ├── hooks/              # useAsyncData.js (tải dữ liệu), useLogout.js (logout + confirm)
+│   │   ├── hooks/              # useAsyncData.js (tải dữ liệu + reload), useLogout.js (logout + confirm)
 │   │   ├── mock/               # data.js + adapter.js (REST giả lập mirror backend)
 │   │   ├── pages/              # Home, Menu, ProductDetail, Cart, Checkout, MyOrders, Login, Register, NotFound
 │   │   │   └── admin/          # AdminLayout, AdminLogin, AdminOrders, AdminProducts, AdminCategories
 │   │   ├── routes/index.jsx    # React Router 7 + RequireAuth / RequireAdmin
 │   │   ├── styles/             # hero.css (hero + phin rơi), pages.css (style cấp trang)
-│   │   ├── utils/format.js     # formatPrice, formatDate, slugify
+│   │   ├── utils/format.js     # formatPrice, formatDate, slugify, normalizeSearch
 │   │   ├── App.jsx             # BrowserRouter + providers (Toast > Confirm > Auth > Cart)
 │   │   ├── App.test.jsx        # smoke test
 │   │   ├── index.css           # design system (token màu/chữ/spacing + primitive)
@@ -205,9 +219,9 @@ HighlandCF/
 |---|---|
 | Auth | `POST /auth/register`, `POST /auth/login`, `GET/PUT /auth/me` |
 | Categories | `GET /categories`, `GET /categories/{id}`, `POST/PUT/DELETE` (admin) |
-| Products | `GET /products` (q, category_id, min/max price, page/size), `GET /products/{id}`, `POST/PUT/DELETE` (admin; DELETE = soft delete) |
+| Products | `GET /products` (q, category_id, min/max price, page/size), `GET /products/{id}`, `POST/PUT/DELETE` (admin; DELETE = soft delete), `DELETE /products/{id}/permanent` (admin; chỉ món đã ẩn và không có lịch sử đơn) |
 | Cart | `GET/POST /cart/items`, `PATCH/DELETE /cart/items/{id}`, `DELETE /cart/items` (auth) |
-| Orders | `POST/GET /orders`, `GET /orders/{id}`, `GET /admin/orders`, `PATCH /admin/orders/{id}/status` (both list endpoints are paginated: `page`/`size`) |
+| Orders | `POST/GET /orders`, `GET /orders/{id}`, `GET /admin/orders`, `PATCH /admin/orders/{id}/status`, `GET /admin/analytics/revenue?days=7` (both list endpoints are paginated: `page`/`size`; revenue sums completed orders by order date in `Asia/Ho_Chi_Minh`) |
 | Health | `GET /api/health` |
 
 ### Database
@@ -247,14 +261,19 @@ HighlandCF/
 - `react-hooks/set-state-in-effect` là **error**: tải dữ liệu qua `src/hooks/useAsyncData.js` (loader bọc `useCallback`), không `setState` đồng bộ trong `useEffect`.
 - Không dùng `window.alert` / `window.confirm`: dùng `useToast()` (`notify`) và `useConfirm()` (`await confirm({...})`).
 - Thứ tự provider trong `src/App.jsx` là `BrowserRouter > ToastProvider > ConfirmProvider > AuthProvider > CartProvider` (hook `useLogout` cần Toast + Confirm nằm ngoài Auth).
-- Login/Register là 2 trang riêng (`src/pages/Login.jsx`, `src/pages/Register.jsx`), dùng chung validator `src/utils/validation.js`; layout là thẻ card căn giữa (`.auth__card`), không dùng panel trượt.
+- Login/Register là 2 trang riêng (`src/pages/Login.jsx`, `src/pages/Register.jsx`), dùng chung validator `src/utils/validation.js`; layout là thẻ card căn giữa (`.auth__card`), không dùng panel trượt. `AdminLogin` dùng đúng layout này (`.auth.auth--standalone`) chứ không có màn hình chia đôi riêng.
+- `AdminLayout` có một nút menu duy nhất đặt đầu hàng (bên trái): `<900px` mở/đóng drawer, `>=900px` thu gọn/mở rộng rail (nhớ trong `localStorage['hc.admin-rail']`). Rail thu gọn còn 4.6rem, nhãn ẩn bằng kỹ thuật `visually-hidden` nên vẫn đọc được bằng screen reader. Drawer trượt từ trái, đóng bằng `X`/`Escape`/màn chắn, khoá cuộn nền và trả tiêu điểm về nút Menu.
+- Chuỗi tiếng Việt: slug luôn tạo bằng `slugify()` và tìm kiếm so khớp không dấu bằng `normalizeSearch()` (cả hai ở `src/utils/format.js`) — không viết lại hàm trong từng trang.
+- Sau mutation: danh sách lọc/phân trang phía server (đơn hàng) gọi `reload()` của `useAsyncData`; chỉ cập nhật cục bộ (`update`) khi bộ lọc chạy ở client (sản phẩm, danh mục).
+- Thông báo lỗi dùng `.notice--error` + `role="alert"`; nhóm nút/chỉ số có `aria-label` phải kèm `role="group"`.
 - Form không dùng attribute `required` (native validation chặn submit trước khi validate custom chạy) → dùng `noValidate` + `aria-required` + báo lỗi dưới field.
+- UI khách hàng: Menu có chip lọc/reset; chi tiết món có CTA cố định trên mobile; giỏ hàng phân biệt loading/error/empty. `CartProvider` khóa mutation dùng chung, bao gồm `placeOrder`, và reset state theo tài khoản. Checkout hiển thị xác nhận từ response tạo đơn, không gọi DELETE giỏ lần hai. MyOrders phân trang 10 đơn và dùng vùng mở rộng chi tiết.
 
 ---
 
 ## 8. Testing
 
-- 22 backend integration tests against a real PostgreSQL (no SQLite/in-memory), across
+- 31 backend integration tests against a real PostgreSQL (no SQLite/in-memory), across
   `test_auth.py`, `test_products.py`, `test_categories.py`, `test_orders.py`, `test_constraints.py`.
 - Tests require migrations + seed first:
   ```bash
@@ -262,9 +281,9 @@ HighlandCF/
   python -m app.seed
   pytest -q
   ```
-- `tests/conftest.py`: session-scoped `TestClient`; `clean_db` autouse fixture removes test-created rows after each test (`order_items`, `orders`, `cart_items`, `categories.slug LIKE 'test-%'`, `slug LIKE 'test-%'`, `email LIKE 'user_%@example.com'`) while preserving seed data.
+- `tests/conftest.py`: session-scoped `TestClient`; `clean_db` autouse fixture removes test-created rows after each test (orders above the suite's starting `MAX(orders.id)`, carts of the seeded customer + `user_%@example.com` accounts, `categories.slug LIKE 'test-%'`, `slug LIKE 'test-%'`, `email LIKE 'user_%@example.com'`) while preserving seed data.
 - CI seeds the DB before running tests.
-- Frontend: 5 test file / 19 test (Vitest + Testing Library, jsdom): `src/App.test.jsx` (smoke), `src/pages/Login.test.jsx`, `src/pages/Register.test.jsx`, `src/components/ConfirmProvider.test.jsx`.
+- Frontend: 6 test file / 37 test (Vitest + Testing Library, jsdom): `src/App.test.jsx` (smoke), `src/pages/Login.test.jsx`, `src/pages/Register.test.jsx`, `src/components/ConfirmProvider.test.jsx`, `src/mock/adapter.test.js`, `src/pages/UserOrdering.test.jsx` (debounce, giỏ hàng, checkout, phân trang, lỗi tải/ảnh).
 - `vite.config.js` bật `test.globals = true` để Testing Library tự dọn DOM giữa các test.
 
 ---
@@ -286,7 +305,8 @@ Triggers: push/PR to `main`, `master`, `dev`.
 ### High
 | Area | Issue | Suggested fix | Status |
 |---|---|---|---|
-| Docker | No `.dockerignore`. `COPY . .` copies `backend/.env` (secrets), `.venv`, `node_modules`, `.git` into images. | Add `backend/.dockerignore` and `frontend/.dockerignore`. | Open |
+| Docker | No `.dockerignore`. `COPY . .` copies `backend/.env` (secrets), `.venv`, `node_modules`, `.git` into images. | Add `backend/.dockerignore` and `frontend/.dockerignore`. | Fixed - both files added |
+| API | Cache invalidation never ran: `register_cache()` was never called, so a created/renamed category or product stayed stale for 60-300 s. | Register each cache inside `@cached`; call `invalidate_all_caches()` after every write. | Fixed - `core/cache.py` registers caches |
 | Security | `SECRET_KEY` has a hard-coded default fallback in `config.py`; a missing `.env` silently signs JWTs with a public key. | Fail fast when unset outside dev. | Fixed - `config.py` rejects empty/placeholder/<32-char keys at startup |
 | API | `DELETE /categories/{id}` with existing products raises an unhandled `IntegrityError` → **500**. | Catch `IntegrityError`, return 400. | Fixed - `routes/categories.py` returns 400 |
 | Deps | Only direct Python deps are pinned; transitive deps still float. | Generate a full lock (`pip freeze` / `uv lock`). | Open |
@@ -306,6 +326,8 @@ Triggers: push/PR to `main`, `master`, `dev`.
 | Auth | JWT stored in `localStorage` (XSS exposure); no refresh/revocation. | Consider httpOnly cookies + refresh tokens. | Open (deferred by design) |
 | Docker | Images run as root; frontend uses `vite preview`; compose does not wire backend/frontend. | Non-root user, production server, compose services. | Open |
 | Code | Redundant `Order.id == Order.id` in `get_my_orders` (`orders.py`). | Remove. | Fixed |
+| API | `PUT` ignored explicit `null`, so `description` / `image_url` / `phone` could never be cleared. | `model_dump(exclude_unset=True)` + per-field null policy. | Fixed - products, categories, `auth/me` |
+| Tests | `clean_db` deleted every order and cart row, wiping seed/demo data on the shared dev DB. | Scope cleanup to rows created by the suite. | Fixed - `tests/conftest.py` |
 | Tests | `pytest-asyncio` is installed and `asyncio_mode=auto`, but all tests are sync. | Remove plugin or add async tests. | Open |
 | Docs | README says SQLAlchemy 2.0 / React Router v6; actual 2.1.5 / v7. | This file is authoritative. | Fixed - `backend/README.md`, `docs/architecture.md` updated |
 | CI | Alembic autogenerate output is unformatted; `ruff format --check` will fail on new migrations. | Run `ruff format` after generating. | Fixed - new migration is formatted |
@@ -333,6 +355,66 @@ Triggers: push/PR to `main`, `master`, `dev`.
   git add --renormalize .
   ```
 - CI must be green before merging.
+
+### `git fetch` — Xem thay đổi remote trước khi quyết định
+
+`git fetch` **chỉ tải thông tin nhánh/commit từ remote về máy, KHÔNG gộp vào code local**. Dùng khi muốn kiểm tra remote có gì mới trước khi pull/merge.
+
+```bash
+# Cập nhật toàn bộ remote-tracking branches (origin/*)
+git fetch origin
+
+# Xem danh sách nhánh remote
+git branch -r
+
+# Xem commit mới trên dev chưa có ở local
+git log --oneline origin/dev..dev
+
+# Xem diff giữa local dev và remote dev
+git diff origin/dev..dev
+```
+
+**So sánh nhanh:**
+
+| Lệnh | Hành động | Code local có đổi không? |
+|------|-----------|-------------------------|
+| `git fetch` | Chỉ cập nhật `origin/*` | **Không** |
+| `git pull` | `fetch` + `merge`/`rebase` ngay | **Có** |
+| `git checkout feature/x` (sau fetch) | Tạo local branch từ `origin/feature/x` | **Có** (chuyển nhánh) |
+
+> **Mẹo:** Chạy `git fetch` thường xuyên (vd: đầu buổi sáng, trước khi rebase) để nắm trạng thái remote mà không làm rối working tree.
+
+### Xoá nhánh an toàn sau khi đã merge
+
+Sau khi PR được **squash and merge** vào `dev` (hoặc `main`), xoá nhánh local và remote:
+
+```bash
+# 1. Chuyển về nhánh cơ sở (dev hoặc main)
+git checkout dev
+git pull origin dev
+
+# 2. Xoá nhánh local (chỉ xoá khi đã merge; -d từ chối nếu chưa merge)
+git branch -d feature/cart-checkout
+
+# 3. Xoá nhánh trên remote (GitHub)
+git push origin --delete feature/cart-checkout
+```
+
+**Hoặc gọn hơn:** dùng flag `-d` của `push` (Git 2.37+):
+```bash
+git push origin -d feature/cart-checkout
+```
+
+**Khi nào KHÔNG xoá được với `-d`:**
+- Nhánh chưa được merge → Git bảo vệ bằng cách từ chối. Nếu **chắc chắn** muốn xoá (vd: nhánh bị abandon), dùng `-D` (force delete local) và `push origin --delete` (remote).
+
+**Dọn dẹp remote-tracking branches cũ (optional):**
+```bash
+# Xoá các origin/* không còn tồn tại trên remote
+git fetch -p
+# hoặc
+git remote prune origin
+```
 
 ---
 

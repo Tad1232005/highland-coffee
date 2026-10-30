@@ -10,6 +10,7 @@ from sqlalchemy import (
     String,
     Text,
     func,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -47,6 +48,7 @@ class Order(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # Relationships
     user: Mapped[Optional["User"]] = relationship("User", back_populates="orders")
@@ -62,8 +64,12 @@ class Order(Base):
             "status IN ('pending', 'confirmed', 'preparing', 'completed', 'cancelled')",
             name="ck_orders_status",
         ),
-        Index("ix_orders_user_id", "user_id"),
-        Index("ix_orders_status", "status"),
+        Index("ix_orders_status_completed_at", "status", "completed_at"),
+        # Composite indexes for the ORDER BY created_at DESC queries used by
+        # both get_my_orders (customer) and admin_list_orders (admin).
+        Index("ix_orders_created_at", "created_at"),
+        Index("ix_orders_user_created_at", "user_id", text("created_at DESC"), text("id DESC")),
+        Index("ix_orders_status_created_at", "status", text("created_at DESC"), text("id DESC")),
     )
 
     def __repr__(self) -> str:
@@ -93,6 +99,8 @@ class OrderItem(Base):
     # Relationships
     order: Mapped["Order"] = relationship("Order", back_populates="items")
     product: Mapped["Product"] = relationship("Product", back_populates="order_items")
+
+    __table_args__ = (CheckConstraint("quantity >= 1", name="ck_order_items_quantity"),)
 
     def __repr__(self) -> str:
         return f"<OrderItem order={self.order_id} product='{self.product_name}' price={self.unit_price} qty={self.quantity}>"

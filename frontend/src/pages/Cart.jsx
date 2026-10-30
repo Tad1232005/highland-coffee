@@ -8,7 +8,7 @@ import { formatPrice } from '../utils/format'
 
 export function Cart() {
   const { user } = useAuth()
-  const { items, totalQuantity, totalAmount, setQuantity, remove, clear, loading } = useCart()
+  const { items, totalQuantity, totalAmount, setQuantity, remove, clear, loading, error, mutating, reload } = useCart()
   const navigate = useNavigate()
   const confirm = useConfirm()
   const { notify } = useToast()
@@ -21,8 +21,10 @@ export function Cart() {
       cancelText: 'Giữ lại',
     })
     if (!confirmed) return
-    await remove(item.id)
-    notify(`Đã bỏ "${item.product.name}" khỏi giỏ.`, { type: 'info' })
+    try {
+      await remove(item.id)
+      notify(`Đã bỏ "${item.product.name}" khỏi giỏ.`, { type: 'info' })
+    } catch { /* CartProvider displays the request error. */ }
   }
 
   const handleClear = async () => {
@@ -34,8 +36,10 @@ export function Cart() {
       danger: true,
     })
     if (!confirmed) return
-    await clear()
-    notify('Giỏ hàng đã được xoá.', { type: 'info' })
+    try {
+      await clear()
+      notify('Giỏ hàng đã được xoá.', { type: 'info' })
+    } catch { /* CartProvider displays the request error. */ }
   }
 
   if (!user) {
@@ -64,6 +68,15 @@ export function Cart() {
         </div>
       </section>
     )
+  }
+
+  if (error) {
+    return <section className="section"><div className="container">
+      <h1 className="page-head__title">Giỏ hàng</h1>
+      <div className="notice notice--error" role="alert"><p>{error}</p>
+        <button type="button" className="btn btn--outline" onClick={reload}>Thử lại giỏ hàng</button>
+      </div>
+    </div></section>
   }
 
   if (items.length === 0) {
@@ -97,7 +110,8 @@ export function Cart() {
           </p>
         </div>
 
-        <div className="cart">
+        <p role="status" className="cart__status">{mutating ? 'Đang cập nhật giỏ hàng…' : 'Giỏ hàng đã cập nhật'}</p>
+        <div className="cart" aria-busy={mutating}>
           <ul className="cart__items">
             {items.map((item) => (
               <li key={item.id} className="cart__item">
@@ -115,14 +129,15 @@ export function Cart() {
                   <h2 className="cart__name">
                     <Link to={`/products/${item.product_id}`}>{item.product.name}</Link>
                   </h2>
-                  <p className="cart__unit">{formatPrice(item.product.price)} / ly</p>
+                  <p className="cart__unit">Đơn giá {formatPrice(item.product.price)}</p>
                 </div>
 
                 <div className="cart__qty">
                   <QuantityStepper
                     value={item.quantity}
                     min={1}
-                    onChange={(value) => setQuantity(item.id, value)}
+                    onChange={(value) => { setQuantity(item.id, value).catch(() => {}) }}
+                    disabled={mutating}
                     label={`Số lượng ${item.product.name}`}
                   />
                 </div>
@@ -132,6 +147,7 @@ export function Cart() {
                 <button
                   type="button"
                   className="cart__remove"
+                  disabled={mutating}
                   onClick={() => handleRemove(item)}
                   aria-label={`Xoá ${item.product.name} khỏi giỏ`}
                 >
@@ -161,10 +177,11 @@ export function Cart() {
               type="button"
               className="btn btn--primary btn--block"
               onClick={() => navigate('/checkout')}
+              disabled={mutating || loading}
             >
               Thanh toán
             </button>
-            <button type="button" className="btn btn--quiet btn--block" onClick={handleClear}>
+            <button type="button" className="btn btn--quiet btn--block" onClick={handleClear} disabled={mutating}>
               Xoá giỏ hàng
             </button>
           </aside>

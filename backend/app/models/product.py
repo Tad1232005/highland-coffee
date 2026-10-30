@@ -63,8 +63,6 @@ class Product(Base):
 
     __table_args__ = (
         CheckConstraint("price >= 0", name="ck_products_price"),
-        Index("ix_products_category_id", "category_id"),
-        Index("ix_products_name", "name"),
         # Partial index serving the default catalogue listing
         # (WHERE is_available = true ORDER BY id DESC).
         Index(

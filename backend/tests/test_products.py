@@ -112,3 +112,86 @@ def test_customer_forbidden_from_admin_actions(client):
         headers={"Authorization": f"Bearer {customer_token}"},
     )
     assert forbidden_res.status_code == 403
+
+
+def test_product_mutations_refresh_cached_reads(client):
+    """Danh sách và chi tiết sản phẩm phải phản ánh thay đổi ngay, không đợi hết TTL."""
+    headers = {"Authorization": f"Bearer {get_admin_token(client)}"}
+    category_id = client.get("/api/categories").json()[0]["id"]
+
+    # Làm nóng cache danh sách trước khi ghi.
+    total_before = client.get("/api/products?size=100").json()["total"]
+
+    slug = f"test-cache-{uuid.uuid4().hex[:8]}"
+    created = client.post(
+        "/api/products",
+        json={
+            "category_id": category_id,
+            "name": "Test Cache Product",
+            "slug": slug,
+            "price": 25000,
+        },
+        headers=headers,
+    )
+    assert created.status_code == 201
+    product_id = created.json()["id"]
+
+    listed = client.get("/api/products?size=100").json()
+    assert listed["total"] == total_before + 1
+    assert any(item["id"] == product_id for item in listed["items"])
+
+    # Đọc chi tiết để làm nóng cache, rồi đổi giá.
+    assert client.get(f"/api/products/{product_id}").status_code == 200
+    assert (
+        client.put(
+            f"/api/products/{product_id}",
+            json={"price": 99000},
+            headers=headers,
+        ).status_code
+        == 200
+    )
+    assert client.get(f"/api/products/{product_id}").json()["price"] == 99000
+
+    # Ẩn sản phẩm -> biến mất khỏi danh sách mặc định (chỉ còn hàng đang bán).
+    assert client.delete(f"/api/products/{product_id}", headers=headers).status_code == 200
+    visible = client.get("/api/products?size=100").json()
+    assert visible["total"] == total_before
+    assert all(item["id"] != product_id for item in visible["items"])
+
+
+def test_update_product_can_clear_optional_fields(client):
+    """PUT gửi null phải xoá được description/image_url, không bị bỏ qua."""
+    headers = {"Authorization": f"Bearer {get_admin_token(client)}"}
+    category_id = client.get("/api/categories").json()[0]["id"]
+    slug = f"test-clear-{uuid.uuid4().hex[:8]}"
+
+    created = client.post(
+        "/api/products",
+        json={
+            "category_id": category_id,
+            "name": "Test Clear Fields",
+            "slug": slug,
+            "description": "Mô tả ban đầu",
+            "image_url": "https://example.com/image.png",
+            "price": 45000,
+        },
+        headers=headers,
+    )
+    assert created.status_code == 201
+    product_id = created.json()["id"]
+
+    cleared = client.put(
+        f"/api/products/{product_id}",
+        json={"description": None, "image_url": None},
+        headers=headers,
+    )
+    assert cleared.status_code == 200
+    assert cleared.json()["description"] is None
+    assert cleared.json()["image_url"] is None
+    # Field không gửi lên thì giữ nguyên.
+    assert cleared.json()["name"] == "Test Clear Fields"
+    assert cleared.json()["price"] == 45000
+
+    detail = client.get(f"/api/products/{product_id}").json()
+    assert detail["description"] is None
+    assert detail["image_url"] is None

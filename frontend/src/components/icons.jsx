@@ -99,6 +99,33 @@ export function IconGrid(props) {
   )
 }
 
+export function IconHome(props) {
+  return (
+    <svg {...base} {...props}>
+      <path d="m3.5 10 8.5-7 8.5 7v9a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2v-9Z" />
+      <path d="M9 21v-7h6v7" />
+    </svg>
+  )
+}
+
+export function IconChart(props) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M4 20h16" />
+      <path d="M6 16v-4M12 16V5M18 16V9" />
+      <path d="M4 4v16" />
+    </svg>
+  )
+}
+
+export function IconChevronDown(props) {
+  return (
+    <svg {...base} {...props}>
+      <path d="m6 9 6 6 6-6" />
+    </svg>
+  )
+}
+
 export function IconClock(props) {
   return (
     <svg {...base} {...props}>
@@ -130,6 +157,34 @@ export function IconLogout(props) {
     <svg {...base} {...props}>
       <path d="M14 5H7a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h7" />
       <path d="M17 12H10M17 12l-2.5-2.5M17 12l-2.5 2.5" />
+    </svg>
+  )
+}
+
+export function IconMenu(props) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M4 7h16M4 12h16M4 17h16" />
+    </svg>
+  )
+}
+
+export function IconPanelLeft(props) {
+  return (
+    <svg {...base} {...props}>
+      <rect x="3.4" y="4.4" width="17.2" height="15.2" rx="2.2" />
+      <path d="M9.8 4.4v15.2" />
+    </svg>
+  )
+}
+
+export function IconStore(props) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M4.4 9.5 6 4.8a1.6 1.6 0 0 1 1.5-1.1h9a1.6 1.6 0 0 1 1.5 1.1l1.6 4.7" />
+      <path d="M4.4 9.5h15.2" />
+      <path d="M5.6 9.5V19a1.6 1.6 0 0 0 1.6 1.6h9.6A1.6 1.6 0 0 0 18.4 19V9.5" />
+      <path d="M9.6 20.6v-5.2h4.8v5.2" />
     </svg>
   )
 }

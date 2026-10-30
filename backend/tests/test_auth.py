@@ -2,6 +2,7 @@ import uuid
 
 from sqlalchemy import text
 
+from app.core.security import verify_password
 from app.db.session import SyncSessionLocal
 
 
@@ -157,3 +158,84 @@ def test_login_is_throttled_after_repeated_failures(client):
         json={"email": unique_email, "password": "WrongPassword@1"},
     )
     assert blocked.status_code == 429
+
+
+def test_registered_user_is_persisted_with_hashed_password(client):
+    email = f"user_{uuid.uuid4().hex[:8]}@example.com"
+    password = "Password@123"
+    response = client.post(
+        "/api/auth/register",
+        json={"email": email, "password": password, "full_name": "Database Test"},
+    )
+    assert response.status_code == 201
+    assert "password" not in response.json()
+    assert "password_hash" not in response.json()
+    with SyncSessionLocal() as session:
+        user = (
+            session.execute(
+                text("SELECT password_hash, role FROM users WHERE email = :email"), {"email": email}
+            )
+            .mappings()
+            .one()
+        )
+        assert user["password_hash"] != password
+        assert verify_password(password, user["password_hash"])
+        assert user["role"] == "customer"
+
+
+def test_update_profile_persists_without_granting_admin_role(client):
+    email = f"user_{uuid.uuid4().hex[:8]}@example.com"
+    assert (
+        client.post(
+            "/api/auth/register",
+            json={"email": email, "password": "Password@123", "full_name": "Original Name"},
+        ).status_code
+        == 201
+    )
+    token = client.post(
+        "/api/auth/login", json={"email": email, "password": "Password@123"}
+    ).json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+    response = client.put(
+        "/api/auth/me",
+        json={"full_name": "Updated Name", "phone": "0901234567", "role": "admin"},
+        headers=headers,
+    )
+    assert response.status_code == 200
+    profile = client.get("/api/auth/me", headers=headers).json()
+    assert profile["full_name"] == "Updated Name"
+    assert profile["phone"] == "0901234567"
+    assert profile["role"] == "customer"
+    assert "password_hash" not in profile
+    assert client.get("/api/admin/orders", headers=headers).status_code == 403
+
+
+def test_update_profile_can_clear_phone(client):
+    """PUT /auth/me với phone=null phải xoá số điện thoại; full_name=null bị bỏ qua."""
+    email = f"user_{uuid.uuid4().hex[:8]}@example.com"
+    assert (
+        client.post(
+            "/api/auth/register",
+            json={
+                "email": email,
+                "password": "Password@123",
+                "full_name": "Giữ Nguyên Tên",
+                "phone": "0901234567",
+            },
+        ).status_code
+        == 201
+    )
+    token = client.post(
+        "/api/auth/login", json={"email": email, "password": "Password@123"}
+    ).json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    cleared = client.put("/api/auth/me", json={"phone": None}, headers=headers)
+    assert cleared.status_code == 200
+    assert cleared.json()["phone"] is None
+
+    profile = client.get("/api/auth/me", headers=headers).json()
+    assert profile["phone"] is None
+    # full_name là cột bắt buộc: gửi null không được làm hỏng dữ liệu.
+    assert client.put("/api/auth/me", json={"full_name": None}, headers=headers).status_code == 200
+    assert client.get("/api/auth/me", headers=headers).json()["full_name"] == "Giữ Nguyên Tên"

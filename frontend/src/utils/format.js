@@ -33,3 +33,25 @@ export function formatDate(value) {
     year: 'numeric',
   }).format(date)
 }
+
+/** Bỏ dấu tiếng Việt: dùng chung cho slug và tìm kiếm không phân biệt dấu. */
+function stripDiacritics(value) {
+  return String(value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+}
+
+/** "Bánh Mì Cà Phê" → "banh-mi-ca-phe". */
+export function slugify(value) {
+  return stripDiacritics(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '')
+}
+
+/** Chuỗi để so khớp tìm kiếm: "banh mi" khớp "Bánh Mì". */
+export function normalizeSearch(value) {
+  return stripDiacritics(value).toLowerCase()
+}
